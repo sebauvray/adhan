@@ -1,0 +1,1 @@
+* 4 * * * python3 /app/get_time_salat.py >> /var/log/cron.log 2>&1

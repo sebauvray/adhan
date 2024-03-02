@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+
+  composer:
+    image: adhan_home
+    environment:
+      - TZ=${TZ}
+    build:
+      context: .
+      dockerfile: docker/dockerfile
+      args:
+        - CURRENT_USER=${CURRENT_USER}
+        - CURRENT_UID=${CURRENT_UID}
+    container_name: ${CONTAINER_NAME_ADHAN:-adhan-home}
+    env_file: .env
+
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - VOLUME_HOME_ASSISTANT:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    #For use Zigbee
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+  
+volumes:
+  VOLUME_HOME_ASSISTANT:

@@ -1,0 +1,57 @@
+FROM debian:buster
+
+ARG CURRENT_USER \
+    CURRENT_UID \
+    TZ
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    tzdata \
+    wget \
+    firefox-esr \
+    python3 \
+    python3-pip \
+    cron  \
+    && rm -rf /var/lib/apt/lists/*
+
+#TIMEZONE
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# GECKODRIVER FOR FIREFOX / SELENIUM
+ENV GECKODRIVER_VERSION=v0.34.0
+
+RUN ARCH=$(uname -m) && case "$ARCH" in \
+    x86_64) ARCH="linux64" ;; \
+    aarch64) ARCH="linux-aarch64" ;; \
+    arm*) ARCH="linux-armhf" ;; \
+    *) echo "Architecture non supportée"; exit 1 ;; \
+    esac && \
+    wget -O geckodriver.tar.gz "https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-$ARCH.tar.gz" \
+    && tar -xzf geckodriver.tar.gz \
+    && mv geckodriver /usr/local/bin/ \
+    && rm geckodriver.tar.gz
+
+RUN chmod +x /usr/local/bin/geckodriver
+
+#PYTHON
+RUN python3 -m pip install --upgrade pip
+COPY docker/requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+RUN rm requirements.txt
+
+#SCRIPT PYTHON FOR GET SALAT TIME
+COPY ./get_time_salat.py /app/get_time_salat.py
+RUN chmod +x /app/get_time_salat.py
+
+#CRON
+ADD ./adhan_cron /etc/cron.d/adhan_cron
+RUN chmod 0644 /etc/cron.d/adhan_cron
+RUN touch /var/log/cron.log
+RUN crontab /etc/cron.d/adhan_cron
+
+
+#SCRIPT ON START CONTAINER
+COPY ./startup.sh /opt/startup.sh
+RUN chmod +x /opt/startup.sh
+CMD ["/opt/startup.sh"]
