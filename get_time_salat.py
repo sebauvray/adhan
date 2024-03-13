@@ -24,7 +24,7 @@ options.add_argument("-headless")
 geckodriver_path = '/usr/local/bin/geckodriver'
 timeWait = 5
 cron_file_path = '/etc/cron.d'
-cron_file_name = 'salat'
+cron_file_name = 'salat_cron'
 bash_script_path = '/app/adhan.sh'
 cron_lines = []
 url = args.url if args.url else os.environ.get('URL_MOSQUE')
