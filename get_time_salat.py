@@ -53,7 +53,7 @@ try:
             prayer_time = prayer_element.text
             hour, minute = prayer_time.split(':')
             cron_lines.append(f"# {prayer_name} \n")
-            cron_lines.append(f"{minute} {hour} * * * {bash_script_path} >> /var/log/cron.log 2>&1 \n")
+            cron_lines.append(f"{minute} {hour} * * * {bash_script_path} >> /var/log/cron.log \n")
         except NoSuchElementException:
             print(f"Prayer {prayer_name} not found or an error occurred. Error: {str(e)}")
         except Exception as e:
