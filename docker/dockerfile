@@ -48,6 +48,10 @@ RUN chmod +x /app/get_time_salat.py
 COPY ./home_assistant.py /app/home_assistant.py
 RUN chmod +x /app/home_assistant.py
 
+#SCRIPT PYTHON FOR API HOMEASSISTANT
+COPY ./adhan.sh /app/adhan.sh
+RUN chmod +x /app/adhan.sh
+
 #CRON
 ADD ./adhan_cron /etc/cron.d/adhan_cron
 RUN chmod 0644 /etc/cron.d/adhan_cron
