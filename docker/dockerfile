@@ -55,8 +55,6 @@ RUN chmod +x /app/adhan.sh
 #CRON
 ADD ./salat.crontab /etc/cron.d/salat.crontab
 RUN touch /var/log/cron.log
-RUN touch /etc/cron.d/salat_cron
-
 RUN crontab /etc/cron.d/salat.crontab
 
 #SCRIPT ON START CONTAINER
