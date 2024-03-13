@@ -44,6 +44,10 @@ RUN rm requirements.txt
 COPY ./get_time_salat.py /app/get_time_salat.py
 RUN chmod +x /app/get_time_salat.py
 
+#SCRIPT PYTHON FOR API HOMEASSISTANT
+COPY ./home_assistant.py /app/home_assistant.py
+RUN chmod +x /app/home_assistant.py
+
 #CRON
 ADD ./adhan_cron /etc/cron.d/adhan_cron
 RUN chmod 0644 /etc/cron.d/adhan_cron
