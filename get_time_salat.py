@@ -52,7 +52,8 @@ try:
             prayer_element = browser.find_element(By.XPATH, f"//div[@class='name' and contains(text(), '{prayer_name}')]/following-sibling::div[@class='time']/div")
             prayer_time = prayer_element.text
             hour, minute = prayer_time.split(':')
-            cron_lines.append(f"{minute} {hour} * * * {bash_script_path} >> /var/log/cron.log 2>&1 # {prayer_name} \n")
+            cron_lines.append(f"# {prayer_name} \n")
+            cron_lines.append(f"{minute} {hour} * * * {bash_script_path} >> /var/log/cron.log 2>&1 \n")
         except NoSuchElementException:
             print(f"Prayer {prayer_name} not found or an error occurred. Error: {str(e)}")
         except Exception as e:
