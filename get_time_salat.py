@@ -49,7 +49,6 @@ try:
     )
     time.sleep(2)
     cron_lines.append(f"* 4 * * * python3 /app/get_time_salat.py >> /var/log/cron.log \n")
-    cron_lines.append(f"*/2 4 * * * echo 'RUN TEST' >> /var/log/cron.log \n")
     for prayer_name in prayers:
         try:
             prayer_element = browser.find_element(By.XPATH, f"//div[@class='name' and contains(text(), '{prayer_name}')]/following-sibling::div[@class='time']/div")
