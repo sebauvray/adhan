@@ -24,8 +24,6 @@ def call_home_assistant(service, token, base_url, entity_id, action):
 
     # build url service
     service_url = f"{base_url}/api/services/{service.replace('.', '/')}/{action}"
-
-    print(service_url)
     
     response = requests.post(service_url, json=payload, headers=headers)
 
@@ -46,5 +44,5 @@ token=os.environ.get('TOKEN')
 base_url=os.environ.get('URL_HOMEASSISTANT')
 entity_id=os.environ.get('ENTITY_ID')
 
-print(entity_id)
+
 call_home_assistant(service, token, base_url, entity_id, args.action)
