@@ -53,13 +53,11 @@ COPY ./adhan.sh /app/adhan.sh
 RUN chmod +x /app/adhan.sh
 
 #CRON
-ADD ./adhan_cron /etc/cron.d/adhan_cron
-RUN chmod 0644 /etc/cron.d/adhan_cron
+ADD ./salat.crontab /etc/cron.d/salat.crontab
 RUN touch /var/log/cron.log
 RUN touch /etc/cron.d/salat_cron
-RUN crontab /etc/cron.d/adhan_cron
-RUN crontab /etc/cron.d/salat_cron
 
+RUN crontab /etc/cron.d/salat.crontab
 
 #SCRIPT ON START CONTAINER
 COPY ./startup.sh /opt/startup.sh

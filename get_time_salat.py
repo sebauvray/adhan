@@ -4,6 +4,7 @@ import os
 import requests
 import datetime
 import argparse
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service
@@ -24,7 +25,7 @@ options.add_argument("-headless")
 geckodriver_path = '/usr/local/bin/geckodriver'
 timeWait = 5
 cron_file_path = '/etc/cron.d'
-cron_file_name = 'salat_cron'
+cron_file_name = 'salat.crontab'
 bash_script_path = '/app/adhan.sh'
 cron_lines = []
 url = args.url if args.url else os.environ.get('URL_MOSQUE')
@@ -46,7 +47,9 @@ try:
     WebDriverWait(browser, timeWait).until(
         EC.presence_of_all_elements_located((By.XPATH, "//div[@class='prayers']"))
     )
-    time.sleep(2) 
+    time.sleep(2)
+    cron_lines.append(f"* 4 * * * python3 /app/get_time_salat.py >> /var/log/cron.log \n")
+    cron_lines.append(f"*/2 4 * * * echo 'RUN TEST' >> /var/log/cron.log \n")
     for prayer_name in prayers:
         try:
             prayer_element = browser.find_element(By.XPATH, f"//div[@class='name' and contains(text(), '{prayer_name}')]/following-sibling::div[@class='time']/div")
@@ -58,6 +61,7 @@ try:
             print(f"Prayer {prayer_name} not found or an error occurred. Error: {str(e)}")
         except Exception as e:
             print(f"Erreur inattendue lors de la recherche de la prière {prayer_name}. Erreur: {str(e)}")
+    cron_lines.append(f"\n")
 except Exception as e:
     print(f"An error occurred while loading the page: {str(e)}")
 finally:
@@ -68,3 +72,12 @@ os.makedirs(cron_file_path, exist_ok=True)
 cron_file_full_path = os.path.join(cron_file_path, cron_file_name)
 with open(cron_file_full_path, 'w') as cron_file:
     cron_file.writelines(cron_lines)
+
+#add cronfile to runner cron
+command = ["crontab", "/etc/cron.d/salat.crontab"]
+
+try:
+    subprocess.run(command, check=True)
+    print("La commande crontab a été exécutée avec succès.")
+except subprocess.CalledProcessError as e:
+    print(f"Une erreur est survenue lors de l'exécution de la commande crontab: {e}")
