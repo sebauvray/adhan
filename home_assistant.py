@@ -34,7 +34,7 @@ def call_home_assistant(service, token, base_url, entity_id, action):
 
 
 
-parser = argparse.ArgumentParser(description="Script pour déclencher des call api homeassitant.")
+parser = argparse.ArgumentParser(description="Script pour déclencher des call api homeassitant")
 parser.add_argument("--action", help="Action a mener sur le bouton salat", type=str)
 
 args = parser.parse_args()
