@@ -1,6 +1,7 @@
 import sys
 import time
 import os
+import pwd
 import requests
 import datetime
 import argparse
@@ -29,6 +30,10 @@ cron_file_name = 'salat.crontab'
 bash_script_path = '/app/adhan.sh'
 cron_lines = []
 url = args.url if args.url else os.environ.get('URL_MOSQUE')
+# User
+uid = os.getuid()
+user_info = pwd.getpwuid(uid)
+username = user_info.pw_name
 
 if url is None:
     print("Aucune URL fournie. Veuillez passer une URL via --url ou définir la variable d'environnement URL_MOSQUE.")
@@ -77,6 +82,6 @@ command = ["crontab", "/etc/cron.d/salat.crontab"]
 
 try:
     subprocess.run(command, check=True)
-    print("La commande crontab a été exécutée avec succès.")
+    print(f"Ajouts des taches cron a l'utilisateur {username}")
 except subprocess.CalledProcessError as e:
-    print(f"Une erreur est survenue lors de l'exécution de la commande crontab: {e}")
+    print(f"Une erreur est survenue lors de l'ajouts des tâches cron à l'utilisateur: {e}")
