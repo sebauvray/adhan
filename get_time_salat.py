@@ -53,7 +53,7 @@ try:
         EC.presence_of_all_elements_located((By.XPATH, "//div[@class='prayers']"))
     )
     time.sleep(2)
-    cron_lines.append(f"* 4 * * * python3 /app/get_time_salat.py >> /var/log/cron.log \n")
+    cron_lines.append(f"0 4 * * * python3 /app/get_time_salat.py >> /var/log/cron.log \n")
     for prayer_name in prayers:
         try:
             prayer_element = browser.find_element(By.XPATH, f"//div[@class='name' and contains(text(), '{prayer_name}')]/following-sibling::div[@class='time']/div")
