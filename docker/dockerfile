@@ -52,6 +52,10 @@ RUN chmod +x /app/home_assistant.py
 COPY ./adhan.sh /app/adhan.sh
 RUN chmod +x /app/adhan.sh
 
+#SCRIPT PYTHON FOR API HOMEASSISTANT
+COPY ./next_salat.py /app/next_salat.py
+RUN chmod +x /app/next_salat.sh
+
 #CRON
 ADD ./salat.crontab /etc/cron.d/salat.crontab
 RUN touch /var/log/cron.log
