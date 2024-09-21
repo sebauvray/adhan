@@ -1,36 +1,49 @@
-from datetime import datetime, timedelta
+import re
 import os
+from datetime import datetime, timedelta
 
-cron_file_path = service=os.environ.get('PATH_CRON')
+cron_file_path = os.environ.get('PATH_CRON')
 
-def lire_crons(path):
-    crons = []
+
+def lire_salat_et_heures(path):
+    resultats = []
     with open(path, 'r') as file:
+        current_name = None
         for line in file:
-            if line.strip() and not line.startswith('#'):
-                parts = line.split()
-                minute = int(parts[0])
-                hour = int(parts[1])
-                name = line.split('#')[-1].strip()
-                crons.append((name, hour, minute))
-    return crons
+            if line.strip().startswith('#'):
+                current_name = line.strip().lstrip('#').strip()
+            else:
+                match = re.search(r'(\d{1,2}) (\d{1,2})', line)
+                if match and current_name:
+                    minute = match.group(1).zfill(2)
+                    hour = match.group(2).zfill(2)
+                    heure = f"{hour}:{minute}"
+                    resultats.append([current_name, heure])
+                    current_name = None
 
-def prochain_cron(crons):
+    return resultats
+
+
+def prochaine_salat(salat_heures):
     maintenant = datetime.now()
-    prochains = []
+    prochain_salat = None
 
-    for cron in crons:
-        name, hour, minute = cron
-        cron_time = maintenant.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if cron_time < maintenant:
-            cron_time += timedelta(days=1)
-        prochains.append((name, cron_time))
-    
-    prochains.sort(key=lambda x: x[1])
-    prochain = prochains[0] 
-    
-    return [prochain[0], prochain[1].strftime("%H:%M")]
+    for salat in salat_heures:
+        name, heure = salat
+        salat_time = datetime.strptime(heure, "%H:%M").replace(year=maintenant.year, month=maintenant.month, day=maintenant.day)
 
-crons = lire_crons(cron_file_path)
-prochain = prochain_cron(crons)
+        if salat_time > maintenant:
+            prochain_salat = salat
+            break
+
+    if not prochain_salat:
+        premier_salat = salat_heures[0]
+        premier_time = datetime.strptime(premier_salat[1], "%H:%M").replace(year=maintenant.year, month=maintenant.month, day=maintenant.day) + timedelta(days=1)
+        prochain_salat = [premier_salat[0], premier_time.strftime("%H:%M")]
+
+    return prochain_salat
+
+salat_heures = lire_salat_et_heures(cron_file_path)
+prochain = prochaine_salat(salat_heures)
+
 print(prochain)
