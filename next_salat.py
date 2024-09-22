@@ -66,4 +66,4 @@ prayer_time = next_prayer[1]
 prayer_name_phonetic = get_phonetic_name(prayer_name)
 
 # Display the result in a readable format
-print(f"La prochain salat {prayer_name_phonetic} sera a {prayer_time}")
+print(f"La prochaine prière {prayer_name_phonetic} aura lieu à {prayer_time}")
