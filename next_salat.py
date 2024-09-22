@@ -46,4 +46,9 @@ def prochaine_salat(salat_heures):
 salat_heures = lire_salat_et_heures(cron_file_path)
 prochain = prochaine_salat(salat_heures)
 
-print(prochain)
+# Extraction du nom de la prière et de l'heure depuis la liste `prochain`
+nom_salat = prochain[0]
+heure_salat = prochain[1]
+
+# Affichage du résultat dans un format lisible
+print(f"La prochaine salat {nom_salat} sera à {heure_salat}")
