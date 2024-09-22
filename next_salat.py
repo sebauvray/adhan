@@ -2,11 +2,25 @@ import re
 import os
 from datetime import datetime, timedelta
 
+# Path to the cron file (set this according to your environment)
 cron_file_path = os.environ.get('PATH_CRON')
 
+# Dictionary of prayer names with phonetic versions for Siri
+phonetic_names = {
+    "Fajr": "Fadjer",
+    "Dhuhr": "Dour",
+    "Asr": "Asser",
+    "Maghrib": "Maghrib",
+    "Isha": "Icha"
+}
 
-def lire_salat_et_heures(path):
-    resultats = []
+# Function to get the phonetic name for Siri
+def get_phonetic_name(prayer_name):
+    return phonetic_names.get(prayer_name, prayer_name)
+
+# Function to read the lines and extract prayer names and associated times
+def read_prayers_and_times(path):
+    results = []
     with open(path, 'r') as file:
         current_name = None
         for line in file:
@@ -17,38 +31,39 @@ def lire_salat_et_heures(path):
                 if match and current_name:
                     minute = match.group(1).zfill(2)
                     hour = match.group(2).zfill(2)
-                    heure = f"{hour}:{minute}"
-                    resultats.append([current_name, heure])
+                    time = f"{hour}:{minute}"
+                    results.append([current_name, time])
                     current_name = None
 
-    return resultats
+    return results
 
+def next_prayer(prayer_times):
+    now = datetime.now()
+    next_prayer = None
 
-def prochaine_salat(salat_heures):
-    maintenant = datetime.now()
-    prochain_salat = None
+    for prayer in prayer_times:
+        name, time = prayer
+        prayer_time = datetime.strptime(time, "%H:%M").replace(year=now.year, month=now.month, day=now.day)
 
-    for salat in salat_heures:
-        name, heure = salat
-        salat_time = datetime.strptime(heure, "%H:%M").replace(year=maintenant.year, month=maintenant.month, day=maintenant.day)
-
-        if salat_time > maintenant:
-            prochain_salat = salat
+        if prayer_time > now:
+            next_prayer = prayer
             break
 
-    if not prochain_salat:
-        premier_salat = salat_heures[0]
-        premier_time = datetime.strptime(premier_salat[1], "%H:%M").replace(year=maintenant.year, month=maintenant.month, day=maintenant.day) + timedelta(days=1)
-        prochain_salat = [premier_salat[0], premier_time.strftime("%H:%M")]
+    if not next_prayer:
+        first_prayer = prayer_times[0]
+        first_time = datetime.strptime(first_prayer[1], "%H:%M").replace(year=now.year, month=now.month, day=now.day) + timedelta(days=1)
+        next_prayer = [first_prayer[0], first_time.strftime("%H:%M")]
 
-    return prochain_salat
+    return next_prayer
 
-salat_heures = lire_salat_et_heures(cron_file_path)
-prochain = prochaine_salat(salat_heures)
 
-# Extraction du nom de la prière et de l'heure depuis la liste `prochain`
-nom_salat = prochain[0]
-heure_salat = prochain[1]
+prayer_times = read_prayers_and_times(cron_file_path)
+next_prayer = next_prayer(prayer_times)
 
-# Affichage du résultat dans un format lisible
-print(f"La prochaine salat {nom_salat} sera à {heure_salat}")
+# Extract the prayer name and time from the `next_prayer` list
+prayer_name = next_prayer[0]
+prayer_time = next_prayer[1]
+prayer_name_phonetic = get_phonetic_name(prayer_name)
+
+# Display the result in a readable format
+print(f"The next prayer {prayer_name_phonetic} will be at {prayer_time}")
