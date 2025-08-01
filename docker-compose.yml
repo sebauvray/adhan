@@ -27,6 +27,19 @@ services:
     #For use Zigbee
     # devices:
     #   - /dev/ttyUSB0:/dev/ttyUSB0
-  
+
+  owntone:
+    container_name: owntone
+    image: owntone/owntone:latest
+    network_mode: host
+    environment:
+      - UID=${CURRENT_UID:-1000}
+      - GID=${CURRENT_GID:-1000}
+    volumes:
+      - ${PATH_CONFIG:-${HOME}/OwnTone/etc}:/etc/owntone
+      - ${PATH_MEDIA:-${HOME}/OwnTone/media}:/srv/media
+      - ${PATH_CACHE:-${HOME}/OwnTone/cache}:/var/cache/owntone
+    restart: unless-stopped
+
 volumes:
   VOLUME_HOME_ASSISTANT:
