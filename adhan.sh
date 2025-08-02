@@ -1,11 +1,143 @@
-#!/bin/bash
+# Format attendu : HH:MM-HH:MM
+MORNING_TIME=${MORNING_TIME:-"07:00-11:00"}
+AFTERNOON_TIME=${AFTERNOON_TIME:-"11:00-20:00"}
+EVENING_TIME=${EVENING_TIME:-"20:00-06:00"}
 
-# Lancement de l'adhan
-echo "Lancement de l'adhan a $(date '+ %H:%M:%S %d-%m-%Y')"
-python3 /app/home_assistant.py --action "turn_on"
+# Niveaux possibles : DEBUG < INFO < WARN < ERROR
+LOG_LEVEL=${LOG_LEVEL:-INFO}
 
-sleep 60
+log() {
+  local level="$1"
+  shift
+  local levels=("DEBUG" "INFO" "WARN" "ERROR")
 
-# Reset bouton pour adhan
-echo "Réinitialisation du bouton homekit a $(date '+ %H:%M:%S %d-%m-%Y')"
-python3 /app/home_assistant.py --action "turn_off"
+  local current_index wanted_index
+  for i in "${!levels[@]}"; do
+    [[ "${levels[$i]}" == "$LOG_LEVEL" ]] && current_index="$i"
+    [[ "${levels[$i]}" == "$level" ]] && wanted_index="$i"
+  done
+
+  if [[ "$wanted_index" -ge "$current_index" ]]; then
+    echo "[$level] $*"
+  fi
+}
+
+get_current_period() {
+  local now=$(date +%H:%M)
+
+  is_in_range() {
+    local time="$1"
+    local range="$2"
+    local start="${range%-*}"
+    local end="${range#*-}"
+    [[ "$time" > "$start" && "$time" < "$end" ]]
+  }
+
+  if is_in_range "$now" "$MORNING_TIME"; then
+    echo "morning"
+  elif is_in_range "$now" "$AFTERNOON_TIME"; then
+    echo "afternoon"
+  elif is_in_range "$now" "$EVENING_TIME"; then
+    echo "evening"
+  else
+    echo "none"
+  fi
+}
+
+get_outputs_for_period() {
+  local period="$1"
+  local config_file="./HomePod.json"
+
+  if [ ! -f "$config_file" ]; then
+    log ERROR "❌ Fichier $config_file introuvable"
+    return 1
+  else
+    log DEBUG "📂 Lecture du fichier de config : $config_file"
+  fi
+
+  jq -r --arg p "$period" '.ListHomePod[] | select(.[$p] == true) | .name' "$config_file"
+}
+
+set_volume_for_outputs() {
+  local volume="$1"
+  shift
+  local outputs=("$@")
+
+  for name in "${outputs[@]}"; do
+    local id=$(curl -s "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs" | jq -r --arg NAME "$name" '.outputs[] | select(.name == $NAME) | .id')
+    if [ -n "$id" ]; then
+      curl -s -X PUT "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs/${id}" \
+        -H "Content-Type: application/json" \
+        -d "{\"volume\":${volume}}" > /dev/null
+    fi
+  done
+}
+
+play_file_on_outputs() {
+  local track_arg="$1"      # peut être ID ou URI
+  shift
+  local outputs=("$@")
+  local track_uri
+
+  if [[ "$track_arg" =~ ^[0-9]+$ ]]; then
+    track_uri="library:track:${track_arg}"
+  else
+    # Si l'utilisateur fournit déjà un URI ou ID complet
+    track_uri="$track_arg"
+  fi
+
+  if [[ -z "$track_uri" ]]; then
+    log ERROR "❌ Aucun track_id/URI fourni"
+    return 1
+  fi
+
+  if [[ ${#outputs[@]} -eq 0 ]]; then
+    log ERROR "❌ Aucun HomePod fourni"
+    return 1
+  fi
+
+  log DEBUG "▶️ Lecture du track URI: $track_uri"
+  log DEBUG "🟢 Activation des outputs: ${outputs[*]}"
+
+  local ids=()
+  for name in "${outputs[@]}"; do
+    local outid
+    outid=$(curl -s "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs" \
+      | jq -r --arg name "$name" '.outputs[] | select(.name == $name) | .id')
+    if [[ -n "$outid" ]]; then
+      ids+=("$outid")
+      log DEBUG "✅ Output trouvé: $name → $outid"
+    else
+      log WARN "⚠️ Output ABSENT: $name"
+    fi
+  done
+
+  if [[ ${#ids[@]} -eq 0 ]]; then
+    log ERROR "❌ Aucune sortie valide"
+    return 1
+  fi
+
+  curl -s -X PUT "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs/set" \
+    -H "Content-Type: application/json" \
+    -d "{\"outputs\": $(printf '%s\n' "${ids[@]}" | jq -R . | jq -s .)}" \
+    > /dev/null
+
+  log DEBUG "➕ Ajout de la piste à la queue et lecture"
+  curl -s -X POST "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/queue/items/add?uris=${track_uri}&clear=true&playback=start" \
+    > /dev/null
+
+  log INFO "✅ Déclenchement fini: track $track_uri sur ${outputs[*]}"
+}
+
+CURRENT_PERIOD=$(get_current_period)
+log DEBUG "📆 Période actuelle : $CURRENT_PERIOD"
+readarray -t HOMEPODS < <(get_outputs_for_period "$CURRENT_PERIOD")
+if [ ${#HOMEPODS[@]} -eq 0 ]; then
+  log WARN "⚠️ Aucun HomePod configuré pour la période '$CURRENT_PERIOD'"
+  exit 0
+fi
+log DEBUG "📦 HomePods détectés pour cette période : ${HOMEPODS[*]}"
+echo "Contenu de HOMEPODS : ${HOMEPODS[*]}"
+set_volume_for_outputs "${ADHAN_VOLUME:-50}" "${HOMEPODS[@]}"
+
+play_file_on_outputs "1" "${HOMEPODS[@]}"

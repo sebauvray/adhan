@@ -1,0 +1,88 @@
+{
+  "ListHomePod": [
+    {
+      "name": "Bureau",
+      "morning": false,
+      "afternoon": true,
+      "evening": false
+    },
+    {
+      "name": "Chambre Garçon",
+      "morning": false,
+      "afternoon": true,
+      "evening": false
+    },
+    {
+      "name": "Chambre Parents",
+      "morning": false,
+      "afternoon": true,
+      "evening": false
+    },
+    {
+      "name": "Entree",
+      "morning": true,
+      "afternoon": true,
+      "evening": true
+    },
+    {
+      "name": "Mac mini de Sébastien",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "Salle De Bain",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "Salle D’eau",
+      "morning": false,
+      "afternoon": true,
+      "evening": false
+    },
+    {
+      "name": "Salon",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "Salon (2)",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "Tv bureau",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "Tv Salon",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "Samsung Projector",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "TV",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    },
+    {
+      "name": "Computer",
+      "morning": false,
+      "afternoon": false,
+      "evening": false
+    }
+  ]
+}
