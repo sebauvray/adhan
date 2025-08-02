@@ -30,7 +30,13 @@ get_current_period() {
     local range="$2"
     local start="${range%-*}"
     local end="${range#*-}"
-    [[ "$time" > "$start" && "$time" < "$end" ]]
+
+    if [[ "$start" < "$end" ]]; then
+      [[ "$time" > "$start" && "$time" < "$end" ]]
+    else
+      # Cas où la plage traverse minuit
+      [[ "$time" > "$start" || "$time" < "$end" ]]
+    fi
   }
 
   if is_in_range "$now" "$MORNING_TIME"; then
