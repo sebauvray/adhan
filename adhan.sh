@@ -52,7 +52,7 @@ get_current_period() {
 
 get_outputs_for_period() {
   local period="$1"
-  local config_file="./HomePod.json"
+  local config_file="${HOMEPOD_FILE:-./HomePod.json}"
 
   if [ ! -f "$config_file" ]; then
     log ERROR "❌ Fichier $config_file introuvable"
