@@ -18,7 +18,9 @@ log() {
   done
 
   if [[ "$wanted_index" -ge "$current_index" ]]; then
-    echo "[$level] $*"
+    local timestamp
+    timestamp=$(date "+%d.%m.%Y - %H:%M:%S")
+    echo "[$timestamp] [$level] $*"
   fi
 }
 
