@@ -37,9 +37,9 @@ services:
       - UID=${CURRENT_UID:-1000}
       - GID=${CURRENT_GID:-1000}
     volumes:
-      - VOLUME_OWNTONE:${HOME}/OwnTone/etc}:/etc/owntone
-      - VOLUME_OWNTONE:${HOME}/OwnTone/media}:/srv/media
-      - VOLUME_OWNTONE:${HOME}/OwnTone/cache}:/var/cache/owntone
+      - "${HOME}/OwnTone/etc:/etc/owntone"
+      - "${HOME}/OwnTone/media:/srv/media"
+      - "${HOME}/OwnTone/cache:/var/cache/owntone"
     restart: unless-stopped
 
 volumes:
