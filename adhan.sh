@@ -36,7 +36,6 @@ get_current_period() {
     if [[ "$start" < "$end" ]]; then
       [[ "$time" > "$start" && "$time" < "$end" ]]
     else
-      # Cas où la plage traverse minuit
       [[ "$time" > "$start" || "$time" < "$end" ]]
     fi
   }
@@ -82,7 +81,7 @@ set_volume_for_outputs() {
 }
 
 play_file_on_outputs() {
-  local track_arg="$1"      # peut être ID ou URI
+  local track_arg="$1"
   shift
   local outputs=("$@")
   local track_uri
@@ -90,7 +89,6 @@ play_file_on_outputs() {
   if [[ "$track_arg" =~ ^[0-9]+$ ]]; then
     track_uri="library:track:${track_arg}"
   else
-    # Si l'utilisateur fournit déjà un URI ou ID complet
     track_uri="$track_arg"
   fi
 
@@ -144,8 +142,14 @@ if [ ${#HOMEPODS[@]} -eq 0 ]; then
   log WARN "⚠️ Aucun HomePod configuré pour la période '$CURRENT_PERIOD'"
   exit 0
 fi
-log DEBUG "📦 HomePods détectés pour cette période : ${HOMEPODS[*]}"
-echo "Contenu de HOMEPODS : ${HOMEPODS[*]}"
-set_volume_for_outputs "${ADHAN_VOLUME:-50}" "${HOMEPODS[@]}"
 
+log DEBUG "📦 HomePods détectés pour cette période : ${HOMEPODS[*]}"
+
+if [[ "$CURRENT_PERIOD" == "morning" ]]; then
+  ADHAN_VOLUME=25
+else
+  ADHAN_VOLUME=${ADHAN_VOLUME:-30}
+fi
+
+set_volume_for_outputs "$ADHAN_VOLUME" "${HOMEPODS[@]}"
 play_file_on_outputs "1" "${HOMEPODS[@]}"

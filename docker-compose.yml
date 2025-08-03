@@ -37,10 +37,11 @@ services:
       - UID=${CURRENT_UID:-1000}
       - GID=${CURRENT_GID:-1000}
     volumes:
-      - ${PATH_CONFIG:-${HOME}/OwnTone/etc}:/etc/owntone
-      - ${PATH_MEDIA:-${HOME}/OwnTone/media}:/srv/media
-      - ${PATH_CACHE:-${HOME}/OwnTone/cache}:/var/cache/owntone
+      - VOLUME_OWNTONE:${HOME}/OwnTone/etc}:/etc/owntone
+      - VOLUME_OWNTONE:${HOME}/OwnTone/media}:/srv/media
+      - VOLUME_OWNTONE:${HOME}/OwnTone/cache}:/var/cache/owntone
     restart: unless-stopped
 
 volumes:
   VOLUME_HOME_ASSISTANT:
+  VOLUME_OWNTONE:
