@@ -145,10 +145,8 @@ fi
 
 log DEBUG "📦 HomePods détectés pour cette période : ${HOMEPODS[*]}"
 
-if [[ "$CURRENT_PERIOD" == "morning" ]]; then
-  ADHAN_VOLUME=25
-else
-  ADHAN_VOLUME=${ADHAN_VOLUME:-30}
+if [[ "$CURRENT_PERIOD" == "evening" ]]; then
+  ADHAN_VOLUME=20
 fi
 
 set_volume_for_outputs "$ADHAN_VOLUME" "${HOMEPODS[@]}"
