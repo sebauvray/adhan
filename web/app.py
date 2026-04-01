@@ -337,6 +337,15 @@ async def api_upload_adhan(file: UploadFile = File(...)):
     return {"success": True, "filename": file.filename, "path": dest}
 
 
+@app.delete("/api/upload-adhan")
+async def api_delete_adhan():
+    adhan_file = get_value('owntone', 'ADHAN_FILE', '')
+    if adhan_file and os.path.exists(adhan_file):
+        os.remove(adhan_file)
+    set_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3')
+    return {"success": True}
+
+
 @app.post("/api/validate-url")
 async def api_validate_url(payload: dict):
     url = payload.get('url', '')
