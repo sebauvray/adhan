@@ -41,13 +41,10 @@ services:
       - UID=${CURRENT_UID:-1000}
       - GID=${CURRENT_GID:-1000}
     volumes:
-      - owntone-etc:/etc/owntone
-      - owntone-media:/srv/media
-      - owntone-cache:/var/cache/owntone
+      - ./owntone/etc:/etc/owntone
+      - ./owntone/media:/srv/media
+      - ./owntone/cache:/var/cache/owntone
     restart: unless-stopped
 
 volumes:
   cron-data:
-  owntone-etc:
-  owntone-media:
-  owntone-cache:

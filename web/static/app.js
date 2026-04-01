@@ -237,18 +237,36 @@ async function loadConfig() {
       const data = await resp.json();
       Object.entries(data).forEach(([key, value]) => {
         const input = form.querySelector(`[name="${key}"]`);
-        if (input && typeof value === 'string') {
+        if (!input) return;
+        if (input.type === 'checkbox') {
+          input.checked = value === 'true';
+          input.dispatchEvent(new Event('change'));
+        } else if (typeof value === 'string') {
           input.value = value;
         }
       });
       // Build OwnTone link
-      const otLink = document.getElementById('owntone-link');
-      if (otLink && data.owntone_host) {
-        otLink.href = `http://${data.owntone_host}:${data.owntone_port || '3689'}`;
-      }
+      updateOwntoneLink();
     }
   } catch (e) {
     console.error('Erreur chargement config:', e);
+  }
+}
+
+function updateOwntoneLink() {
+  const hostInput = document.getElementById('owntone_host');
+  const portInput = document.getElementById('owntone_port');
+  const link = document.getElementById('owntone-link');
+  const wrapper = document.getElementById('owntone-link-wrapper');
+  if (!hostInput || !link || !wrapper) return;
+
+  const host = hostInput.value.trim();
+  const port = (portInput && portInput.value.trim()) || '3689';
+  if (host) {
+    link.href = `http://${host}:${port}`;
+    wrapper.style.display = 'block';
+  } else {
+    wrapper.style.display = 'none';
   }
 }
 
@@ -302,4 +320,10 @@ async function submitSettings(event) {
 document.addEventListener('DOMContentLoaded', () => {
   initDashboard();
   loadConfig();
+
+  // Live update OwnTone link when typing
+  const otHost = document.getElementById('owntone_host');
+  const otPort = document.getElementById('owntone_port');
+  if (otHost) otHost.addEventListener('input', updateOwntoneLink);
+  if (otPort) otPort.addEventListener('input', updateOwntoneLink);
 });

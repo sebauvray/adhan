@@ -23,65 +23,83 @@
         </div>
       </div>
 
-      <!-- OwnTone -->
+      <!-- Alertes sonores -->
       <div class="form-section">
-        <h2>OwnTone</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="owntone_host">Hôte</label>
-            <input type="text" id="owntone_host" name="owntone_host">
-          </div>
-          <div class="form-group">
-            <label for="owntone_port">Port</label>
-            <input type="text" id="owntone_port" name="owntone_port">
-          </div>
+        <h2>Alertes sonores</h2>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" id="sound_enabled" name="sound_enabled" value="true">
+            Activer l'appel à la prière sur les enceintes
+          </label>
         </div>
-        <p style="margin-top:0.5rem;font-size:0.8rem">
-          <a id="owntone-link" href="#" target="_blank" style="color:var(--gold);text-decoration:none">
-            Ouvrir l'interface OwnTone &rarr;
-          </a>
-        </p>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="adhan_file">Fichier audio</label>
-            <input type="text" id="adhan_file" name="adhan_file">
+
+        <div id="sound-config" style="display:none">
+          <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
+            OwnTone est installé automatiquement avec Adhan Home pour diffuser l'adhan sur vos enceintes AirPlay (HomePod, etc.).
+          </p>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="adhan_file">Fichier audio</label>
+              <input type="text" id="adhan_file" name="adhan_file">
+            </div>
+            <div class="form-group">
+              <label for="adhan_volume">Volume</label>
+              <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
+            </div>
           </div>
-          <div class="form-group">
-            <label for="adhan_volume">Volume</label>
-            <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
-          </div>
+
+          <p id="owntone-link-wrapper" style="margin-top:0.3rem;font-size:0.8rem">
+            <a id="owntone-link" href="#" target="_blank" style="color:var(--accent);text-decoration:none">
+              Gérer les enceintes dans OwnTone &rarr;
+            </a>
+          </p>
         </div>
       </div>
 
-      <!-- Périodes -->
-      <div class="form-section">
-        <h2>Plages horaires</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="morning_time">Matin</label>
-            <input type="text" id="morning_time" name="morning_time">
+      <!-- Avancé -->
+      <details class="form-section">
+        <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dark-muted);padding-bottom:0.4rem;border-bottom:1px solid rgba(0,0,0,0.06)">
+          Avancé
+        </summary>
+        <div style="margin-top:0.8rem">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="morning_time">Matin</label>
+              <input type="text" id="morning_time" name="morning_time">
+            </div>
+            <div class="form-group">
+              <label for="afternoon_time">Après-midi</label>
+              <input type="text" id="afternoon_time" name="afternoon_time">
+            </div>
           </div>
-          <div class="form-group">
-            <label for="afternoon_time">Après-midi</label>
-            <input type="text" id="afternoon_time" name="afternoon_time">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="evening_time">Soir (volume réduit)</label>
+              <input type="text" id="evening_time" name="evening_time">
+            </div>
+            <div class="form-group">
+              <label for="log_level">Niveau de log</label>
+              <select id="log_level" name="log_level">
+                <option value="DEBUG">DEBUG</option>
+                <option value="INFO">INFO</option>
+                <option value="WARN">WARN</option>
+                <option value="ERROR">ERROR</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="owntone_host">OwnTone hôte</label>
+              <input type="text" id="owntone_host" name="owntone_host">
+            </div>
+            <div class="form-group">
+              <label for="owntone_port">OwnTone port</label>
+              <input type="text" id="owntone_port" name="owntone_port">
+            </div>
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="evening_time">Soir</label>
-            <input type="text" id="evening_time" name="evening_time">
-          </div>
-          <div class="form-group">
-            <label for="log_level">Niveau de log</label>
-            <select id="log_level" name="log_level">
-              <option value="DEBUG">DEBUG</option>
-              <option value="INFO">INFO</option>
-              <option value="WARN">WARN</option>
-              <option value="ERROR">ERROR</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      </details>
 
       <!-- Token -->
       <div class="form-section">
@@ -104,11 +122,20 @@
 
   <script src="/static/app.js"></script>
   <script>
-    // Pre-fill token field from localStorage
     document.addEventListener('DOMContentLoaded', () => {
+      // Pre-fill token
       const stored = localStorage.getItem('adhan_token');
       const input = document.getElementById('api_token');
       if (stored && input) input.value = stored;
+
+      // Toggle sound config visibility
+      const toggle = document.getElementById('sound_enabled');
+      const config = document.getElementById('sound-config');
+      if (toggle && config) {
+        toggle.addEventListener('change', () => {
+          config.style.display = toggle.checked ? 'block' : 'none';
+        });
+      }
     });
 
     function saveToken() {

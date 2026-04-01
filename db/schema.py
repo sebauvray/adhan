@@ -74,7 +74,7 @@ def _migrate_env_to_db(conn):
             'EVENING_TIME': os.environ.get('EVENING_TIME', '20:00-06:00'),
         },
         'owntone': {
-            'HOST': os.environ.get('OWNTONE_HOST', ''),
+            'HOST': os.environ.get('OWNTONE_HOST', 'host.docker.internal'),
             'PORT': os.environ.get('OWNTONE_PORT', '3689'),
             'ADHAN_FILE': os.environ.get('ADHAN_FILE', '/srv/media/adhan.mp3'),
             'ADHAN_VOLUME': os.environ.get('ADHAN_VOLUME', '40'),

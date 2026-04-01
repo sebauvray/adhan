@@ -181,11 +181,12 @@ async def api_get_config():
     return {
         "mosque_url": get_value('config', 'MOSQUE_URL', ''),
         "city": get_value('config', 'CITY', ''),
+        "sound_enabled": get_value('config', 'SOUND_ENABLED', 'false'),
         "log_level": get_value('config', 'LOG_LEVEL', 'INFO'),
         "morning_time": get_value('config', 'MORNING_TIME', '07:00-11:00'),
         "afternoon_time": get_value('config', 'AFTERNOON_TIME', '11:00-20:00'),
         "evening_time": get_value('config', 'EVENING_TIME', '20:00-06:00'),
-        "owntone_host": get_value('owntone', 'HOST', ''),
+        "owntone_host": get_value('owntone', 'HOST', 'host.docker.internal'),
         "owntone_port": get_value('owntone', 'PORT', '3689'),
         "adhan_file": get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3'),
         "adhan_volume": get_value('owntone', 'ADHAN_VOLUME', '40'),
@@ -195,6 +196,7 @@ async def api_get_config():
 
 class ConfigPayload(BaseModel):
     mosque_url: str
+    sound_enabled: str = "false"
     owntone_host: str = ""
     owntone_port: str = "3689"
     adhan_file: str = "/srv/media/adhan.mp3"
@@ -218,6 +220,7 @@ async def _save_config(data: ConfigPayload):
         pass
 
     set_value('config', 'MOSQUE_URL', data.mosque_url)
+    set_value('config', 'SOUND_ENABLED', data.sound_enabled)
     set_value('config', 'LOG_LEVEL', data.log_level)
     set_value('config', 'MORNING_TIME', data.morning_time)
     set_value('config', 'AFTERNOON_TIME', data.afternoon_time)
