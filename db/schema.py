@@ -23,6 +23,11 @@ CREATE TABLE IF NOT EXISTS homepods (
     evening   INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS prayer_config (
+    prayer TEXT PRIMARY KEY,
+    volume INTEGER NOT NULL DEFAULT 40
+);
+
 CREATE TABLE IF NOT EXISTS prayer_outputs (
     prayer      TEXT NOT NULL,
     output_id   TEXT NOT NULL,
@@ -108,9 +113,6 @@ def _ensure_defaults(conn):
         },
         'config': {
             'LOG_LEVEL': 'INFO',
-            'MORNING_TIME': '07:00-11:00',
-            'AFTERNOON_TIME': '11:00-20:00',
-            'EVENING_TIME': '20:00-06:00',
         },
     }
     for table, values in defaults.items():

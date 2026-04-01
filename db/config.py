@@ -107,6 +107,38 @@ def validate_token(token):
         return False
 
 
+def get_prayer_volume(prayer, default=40):
+    try:
+        conn = _connect()
+        cur = conn.execute("SELECT volume FROM prayer_config WHERE prayer = ?", (prayer,))
+        row = cur.fetchone()
+        conn.close()
+        return row[0] if row else default
+    except Exception:
+        return default
+
+
+def set_prayer_volume(prayer, volume):
+    conn = _connect()
+    conn.execute(
+        "INSERT OR REPLACE INTO prayer_config (prayer, volume) VALUES (?, ?)",
+        (prayer, int(volume))
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_all_prayer_volumes():
+    try:
+        conn = _connect()
+        cur = conn.execute("SELECT prayer, volume FROM prayer_config")
+        result = {r[0]: r[1] for r in cur.fetchall()}
+        conn.close()
+        return result
+    except Exception:
+        return {}
+
+
 def get_prayer_outputs(prayer=None):
     """Get configured outputs per prayer. Returns dict {prayer: [output_names]}."""
     try:

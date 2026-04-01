@@ -1,9 +1,8 @@
 #!/bin/bash
 
-# Charge la configuration depuis SQLite
+# Load config from SQLite
 eval "$(python3 /app/load_config.py)"
 
-# Niveaux possibles : DEBUG < INFO < WARN < ERROR
 LOG_LEVEL=${LOG_LEVEL:-INFO}
 
 log() {
@@ -24,39 +23,6 @@ log() {
   fi
 }
 
-get_current_period() {
-  local now=$(date +%H:%M)
-
-  is_in_range() {
-    local time="$1"
-    local range="$2"
-    local start="${range%-*}"
-    local end="${range#*-}"
-
-    if [[ "$start" < "$end" ]]; then
-      [[ "$time" >= "$start" && "$time" < "$end" ]]
-    else
-      [[ "$time" >= "$start" || "$time" < "$end" ]]
-    fi
-  }
-
-  if is_in_range "$now" "$MORNING_TIME"; then
-    echo "morning"
-  elif is_in_range "$now" "$AFTERNOON_TIME"; then
-    echo "afternoon"
-  elif is_in_range "$now" "$EVENING_TIME"; then
-    echo "evening"
-  else
-    echo "none"
-  fi
-}
-
-get_outputs_for_period() {
-  local period="$1"
-  python3 /app/get_homepods.py "$period"
-}
-
-# Récupère les IDs OwnTone pour une liste de noms d'outputs
 get_output_ids_for_names() {
   local outputs_json="$1"
   shift
@@ -67,9 +33,9 @@ get_output_ids_for_names() {
     id=$(echo "$outputs_json" | jq -r --arg n "$name" '.outputs[] | select(.name == $n) | .id')
     if [[ -n "$id" ]]; then
       echo "$id"
-      log DEBUG "Output trouvé: $name → $id"
+      log DEBUG "Output found: $name → $id"
     else
-      log WARN "Output ABSENT: $name"
+      log WARN "Output not found: $name"
     fi
   done
 }
@@ -92,17 +58,14 @@ play_file_on_ids() {
   local ids=("$@")
 
   if [[ -z "$track_uri" ]]; then
-    log ERROR "Aucun track URI fourni"
+    log ERROR "No track URI provided"
     return 1
   fi
 
   if [[ ${#ids[@]} -eq 0 ]]; then
-    log ERROR "Aucun output fourni"
+    log ERROR "No outputs provided"
     return 1
   fi
-
-  log DEBUG "Lecture du track URI: $track_uri"
-  log DEBUG "Activation des outputs: ${ids[*]}"
 
   curl -s -X PUT "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs/set" \
     -H "Content-Type: application/json" \
@@ -112,13 +75,13 @@ play_file_on_ids() {
   curl -s -X POST "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/queue/items/add?uris=${track_uri}&clear=true&playback=start" \
     > /dev/null
 
-  log INFO "Déclenchement fini: track $track_uri sur ${ids[*]}"
+  log INFO "Playback started: $track_uri on ${ids[*]}"
 }
 
 resolve_track_uri() {
   local file_path="${ADHAN_FILE:-}"
   if [[ -z "$file_path" ]]; then
-    log ERROR "ADHAN_FILE non défini"
+    log ERROR "ADHAN_FILE not set"
     return 1
   fi
 
@@ -131,7 +94,7 @@ resolve_track_uri() {
   if [[ -n "$track_id" ]]; then
     echo "library:track:${track_id}"
   else
-    log ERROR "Track non trouvé pour: $file_path"
+    log ERROR "Track not found: $file_path"
     return 1
   fi
 }
@@ -140,7 +103,7 @@ resolve_track_uri() {
 
 PRAYER_NAME="${1:-}"
 if [[ -z "$PRAYER_NAME" ]]; then
-  log ERROR "No prayer name provided. Usage: adhan.sh <prayer_name>"
+  log ERROR "Usage: adhan.sh <prayer_name>"
   exit 1
 fi
 
@@ -155,11 +118,15 @@ fi
 
 log DEBUG "Outputs for $PRAYER_NAME: ${HOMEPODS[*]}"
 
-# Evening volume reduction
-CURRENT_PERIOD=$(get_current_period)
-if [[ "$CURRENT_PERIOD" == "evening" ]]; then
-  ADHAN_VOLUME=20
-fi
+# Get volume for this prayer (default 40)
+PRAYER_VOLUME=$(python3 -c "
+import sys; sys.path.insert(0,'/app')
+from db.schema import init_db; from db.config import get_prayer_volume
+init_db(); print(get_prayer_volume('$PRAYER_NAME', 40))
+")
+ADHAN_VOLUME=${PRAYER_VOLUME:-${ADHAN_VOLUME:-40}}
+
+log DEBUG "Volume for $PRAYER_NAME: $ADHAN_VOLUME"
 
 OUTPUTS_JSON=$(curl -s "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs")
 readarray -t OUTPUT_IDS < <(get_output_ids_for_names "$OUTPUTS_JSON" "${HOMEPODS[@]}")

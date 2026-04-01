@@ -28,7 +28,7 @@
       <div class="form-section">
         <h2>Alertes sonores</h2>
         <div class="form-group">
-          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+          <label class="checkbox-label">
             <input type="checkbox" id="sound_enabled" name="sound_enabled" value="true">
             Activer l'appel à la prière sur les enceintes
           </label>
@@ -72,20 +72,6 @@
         </summary>
         <div style="margin-top:0.8rem">
           <div class="form-row">
-            <div class="form-group">
-              <label for="morning_time">Matin</label>
-              <input type="text" id="morning_time" name="morning_time">
-            </div>
-            <div class="form-group">
-              <label for="afternoon_time">Après-midi</label>
-              <input type="text" id="afternoon_time" name="afternoon_time">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="evening_time">Soir (volume réduit)</label>
-              <input type="text" id="evening_time" name="evening_time">
-            </div>
             <div class="form-group">
               <label for="log_level">Niveau de log</label>
               <select id="log_level" name="log_level">
@@ -171,6 +157,24 @@
       border-color: var(--accent);
     }
     .output-chip input { display: none; }
+    .prayer-volume {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-dark-muted);
+    }
+    .prayer-volume input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      height: 4px;
+    }
+    .prayer-volume-value {
+      min-width: 2rem;
+      text-align: right;
+      font-weight: 500;
+    }
   </style>
   <script src="/static/app.js"></script>
   <script>
@@ -242,9 +246,12 @@
 
         const outputs = (await outputsResp.json()).outputs || [];
         const config = await configResp.json();
+        const prayerOutputs = config.outputs || {};
+        const prayerVolumes = config.volumes || {};
 
         container.innerHTML = PRAYERS.map(prayer => {
-          const selectedIds = (config[prayer] || []).map(o => o.id);
+          const selectedIds = (prayerOutputs[prayer] || []).map(o => o.id);
+          const volume = prayerVolumes[prayer] ?? 40;
           return `
             <div class="prayer-config-card">
               <div class="prayer-config-header">
@@ -257,6 +264,11 @@
                     ${o.name}
                   </label>
                 `).join('')}
+              </div>
+              <div class="prayer-volume">
+                <span>Volume</span>
+                <input type="range" min="0" max="100" value="${volume}" data-prayer="${prayer}" oninput="this.nextElementSibling.textContent=this.value">
+                <span class="prayer-volume-value">${volume}</span>
               </div>
             </div>
           `;
@@ -280,7 +292,9 @@
       const container = document.getElementById('prayer-outputs-config');
       if (!container) return;
 
-      const payload = {};
+      const outputs = {};
+      const volumes = {};
+
       container.querySelectorAll('.prayer-config-outputs').forEach(row => {
         const prayer = row.dataset.prayer;
         const selected = [];
@@ -288,7 +302,11 @@
           const chip = cb.closest('.output-chip');
           selected.push({ id: chip.dataset.id, name: chip.dataset.name });
         });
-        payload[prayer] = selected;
+        outputs[prayer] = selected;
+      });
+
+      container.querySelectorAll('.prayer-volume input[type="range"]').forEach(slider => {
+        volumes[slider.dataset.prayer] = parseInt(slider.value);
       });
 
       const token = localStorage.getItem('adhan_token');
@@ -298,7 +316,7 @@
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ outputs, volumes }),
       });
     }
 

@@ -17,7 +17,8 @@ from db.schema import init_db
 from db.config import (
     get_value, set_value, get_all, get_homepods, set_homepods,
     is_configured, get_token, create_token, validate_token,
-    get_prayer_outputs, set_prayer_outputs
+    get_prayer_outputs, set_prayer_outputs,
+    get_all_prayer_volumes, set_prayer_volume
 )
 from providers.mawaqit_http_provider import get_full_data
 
@@ -184,9 +185,6 @@ async def api_get_config():
         "city": get_value('config', 'CITY', ''),
         "sound_enabled": get_value('config', 'SOUND_ENABLED', 'false'),
         "log_level": get_value('config', 'LOG_LEVEL', 'INFO'),
-        "morning_time": get_value('config', 'MORNING_TIME', '07:00-11:00'),
-        "afternoon_time": get_value('config', 'AFTERNOON_TIME', '11:00-20:00'),
-        "evening_time": get_value('config', 'EVENING_TIME', '20:00-06:00'),
         "owntone_host": get_value('owntone', 'HOST', 'host.docker.internal'),
         "owntone_port": get_value('owntone', 'PORT', '3689'),
         "adhan_file": get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3'),
@@ -203,9 +201,6 @@ class ConfigPayload(BaseModel):
     adhan_file: str = "/srv/media/adhan.mp3"
     adhan_volume: str = "40"
     log_level: str = "INFO"
-    morning_time: str = "07:00-11:00"
-    afternoon_time: str = "11:00-20:00"
-    evening_time: str = "20:00-06:00"
     homepods: list = []
 
 
@@ -223,10 +218,6 @@ async def _save_config(data: ConfigPayload):
     set_value('config', 'MOSQUE_URL', data.mosque_url)
     set_value('config', 'SOUND_ENABLED', data.sound_enabled)
     set_value('config', 'LOG_LEVEL', data.log_level)
-    set_value('config', 'MORNING_TIME', data.morning_time)
-    set_value('config', 'AFTERNOON_TIME', data.afternoon_time)
-    set_value('config', 'EVENING_TIME', data.evening_time)
-
     set_value('owntone', 'HOST', data.owntone_host)
     set_value('owntone', 'PORT', data.owntone_port)
     set_value('owntone', 'ADHAN_FILE', data.adhan_file)
@@ -306,15 +297,22 @@ async def api_outputs():
 
 @app.get("/api/prayer-outputs")
 async def api_get_prayer_outputs():
-    """Get speaker config per prayer."""
-    return get_prayer_outputs()
+    """Get speaker config and volumes per prayer."""
+    return {
+        "outputs": get_prayer_outputs(),
+        "volumes": get_all_prayer_volumes(),
+    }
 
 
 @app.post("/api/prayer-outputs")
 async def api_set_prayer_outputs(payload: dict):
-    """Save speaker config per prayer. Expects {prayer: [{id, name}, ...]}."""
-    for prayer, outputs in payload.items():
-        set_prayer_outputs(prayer, outputs)
+    """Save speaker config per prayer. Expects {outputs: {prayer: [{id, name}]}, volumes: {prayer: int}}."""
+    outputs = payload.get('outputs', {})
+    volumes = payload.get('volumes', {})
+    for prayer, outs in outputs.items():
+        set_prayer_outputs(prayer, outs)
+    for prayer, vol in volumes.items():
+        set_prayer_volume(prayer, vol)
     return {"success": True}
 
 
