@@ -4,7 +4,7 @@ import os
 from datetime import datetime, time as dtime, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException, Header
+from fastapi import FastAPI, Request, HTTPException, Header, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -276,6 +276,27 @@ async def api_refresh(authorization: Optional[str] = Header(None)):
 
     subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
     return {"success": True}
+
+
+MEDIA_DIR = '/srv/media'
+ALLOWED_AUDIO = {'.mp3', '.wav', '.ogg', '.m4a', '.flac'}
+
+
+@app.post("/api/upload-adhan")
+async def api_upload_adhan(file: UploadFile = File(...)):
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_AUDIO:
+        raise HTTPException(status_code=400, detail=f"Format non supporté ({ext}). Formats acceptés : {', '.join(ALLOWED_AUDIO)}")
+
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    dest = os.path.join(MEDIA_DIR, f"adhan{ext}")
+
+    with open(dest, 'wb') as f:
+        content = await file.read()
+        f.write(content)
+
+    set_value('owntone', 'ADHAN_FILE', dest)
+    return {"success": True, "filename": file.filename, "path": dest}
 
 
 @app.post("/api/validate-url")

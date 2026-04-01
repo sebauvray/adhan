@@ -40,8 +40,9 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="adhan_file">Fichier audio</label>
-              <input type="text" id="adhan_file" name="adhan_file">
+              <label for="adhan_upload">Fichier audio de l'adhan</label>
+              <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="font-size:0.85rem">
+              <div id="upload-status" style="font-size:0.75rem;color:var(--text-dark-muted);margin-top:0.3rem"></div>
             </div>
             <div class="form-group">
               <label for="adhan_volume">Volume</label>
@@ -137,6 +138,35 @@
         });
       }
     });
+
+    // Auto-upload when file is selected
+    const fileInput = document.getElementById('adhan_upload');
+    if (fileInput) {
+      fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        const status = document.getElementById('upload-status');
+        status.textContent = 'Envoi en cours...';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const resp = await fetch('/api/upload-adhan', { method: 'POST', body: formData });
+          const data = await resp.json();
+          if (data.success) {
+            status.textContent = `${data.filename} uploadé`;
+            status.style.color = '#2e7d32';
+          } else {
+            status.textContent = data.detail || 'Erreur';
+            status.style.color = '#c53030';
+          }
+        } catch (e) {
+          status.textContent = 'Erreur de connexion';
+          status.style.color = '#c53030';
+        }
+      });
+    }
 
     function saveToken() {
       const input = document.getElementById('api_token');

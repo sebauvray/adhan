@@ -9,6 +9,7 @@ services:
       - "${WEB_PORT:-8080}:8080"
     volumes:
       - ./data:/app/data
+      - ./owntone/media:/srv/media
       - cron-data:/etc/cron.d
     environment:
       - TZ=${TZ:-Europe/Paris}
