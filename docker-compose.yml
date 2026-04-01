@@ -7,6 +7,8 @@ services:
     container_name: adhan-web
     ports:
       - "${WEB_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data
       - ./owntone/media:/srv/media
@@ -25,6 +27,8 @@ services:
         - GECKODRIVER_VERSION=${GECKODRIVER_VERSION:-v0.34.0}
         - AUTONOMOUS=${AUTONOMOUS:-false}
     container_name: ${CONTAINER_NAME_ADHAN:-adhan-home}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data
       - cron-data:/etc/cron.d
