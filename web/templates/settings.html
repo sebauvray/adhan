@@ -127,6 +127,14 @@
       justify-content: space-between; margin-bottom: 0.5rem;
     }
     .prayer-config-name { font-weight: 600; font-size: 0.9rem; }
+    .prayer-test-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--accent); padding: 0.2rem;
+      transition: color 0.2s; display: inline-flex; align-items: center;
+    }
+    .prayer-test-btn:hover { color: #a68a5b; }
+    .prayer-test-btn.playing { color: #c53030; }
+    .prayer-test-btn.playing:hover { color: #9b2c2c; }
     .prayer-config-outputs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
     .output-chip {
       display: flex; align-items: center; gap: 0.3rem;
@@ -459,6 +467,9 @@
             <div class="prayer-config-card" data-prayer="${prayer}">
               <div class="prayer-config-header">
                 <span class="prayer-config-name">${PRAYER_LABELS[prayer] || prayer}</span>
+                <button type="button" class="prayer-test-btn" data-prayer="${prayer}" onclick="toggleTestPrayer(this)" title="Tester">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5,3 19,12 5,21"/></svg>
+                </button>
               </div>
               <div class="prayer-config-outputs" data-prayer="${prayer}">
                 ${outputs.map(o => `
@@ -516,6 +527,47 @@
         headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
         body: JSON.stringify({ outputs: { [prayer]: selected }, volumes: { [prayer]: volume } }),
       });
+    }
+
+    // --- Play/Stop test ---
+
+    let currentlyPlaying = null;
+
+    async function toggleTestPrayer(btn) {
+      const prayer = btn.dataset.prayer;
+
+      if (currentlyPlaying === prayer) {
+        await fetch('/api/stop-playback', { method: 'POST' });
+        btn.classList.remove('playing');
+        btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5,3 19,12 5,21"/></svg>';
+        currentlyPlaying = null;
+        return;
+      }
+
+      if (currentlyPlaying) {
+        await fetch('/api/stop-playback', { method: 'POST' });
+        const prevBtn = document.querySelector('.prayer-test-btn.playing');
+        if (prevBtn) {
+          prevBtn.classList.remove('playing');
+          prevBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5,3 19,12 5,21"/></svg>';
+        }
+      }
+
+      await savePrayerCard(prayer);
+
+      try {
+        const resp = await fetch('/api/test-prayer/' + prayer, { method: 'POST' });
+        if (resp.ok) {
+          btn.classList.add('playing');
+          btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>';
+          currentlyPlaying = prayer;
+        } else {
+          const data = await resp.json();
+          alert(data.detail || 'Erreur');
+        }
+      } catch (e) {
+        alert('Erreur de connexion');
+      }
     }
   </script>
 </body>

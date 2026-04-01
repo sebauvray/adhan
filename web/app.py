@@ -340,6 +340,65 @@ async def api_set_prayer_outputs(payload: dict):
     return {"success": True}
 
 
+@app.post("/api/test-prayer/{prayer}")
+async def api_test_prayer(prayer: str):
+    """Play adhan on configured outputs for a specific prayer."""
+    from db.config import get_outputs_for_prayer, get_prayer_volume
+    host = get_value('owntone', 'HOST', 'host.docker.internal')
+    port = get_value('owntone', 'PORT', '3689')
+    adhan_file = get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3')
+
+    outputs = get_outputs_for_prayer(prayer)
+    if not outputs:
+        raise HTTPException(status_code=400, detail=f"Aucune enceinte configurée pour {prayer}")
+
+    volume = get_prayer_volume(prayer, 40)
+    base = f"http://{host}:{port}"
+
+    # Get all OwnTone outputs
+    resp = http_requests.get(f"{base}/api/outputs", timeout=5)
+    all_outputs = resp.json().get('outputs', [])
+
+    # Find IDs for configured names
+    ids = []
+    for o in all_outputs:
+        if o['name'] in outputs:
+            ids.append(str(o['id']))
+            # Set volume
+            http_requests.put(f"{base}/api/outputs/{o['id']}",
+                json={"volume": volume}, timeout=5)
+
+    if not ids:
+        raise HTTPException(status_code=400, detail="Enceintes introuvables dans OwnTone")
+
+    # Select outputs
+    http_requests.put(f"{base}/api/outputs/set",
+        json={"outputs": ids}, timeout=5)
+
+    # Search track
+    resp = http_requests.get(f"{base}/api/search",
+        params={"type": "tracks", "expression": f'path is "{adhan_file}"'}, timeout=5)
+    tracks = resp.json().get('tracks', {}).get('items', [])
+    if not tracks:
+        raise HTTPException(status_code=400, detail="Fichier audio introuvable dans OwnTone")
+
+    track_uri = f"library:track:{tracks[0]['id']}"
+
+    # Play
+    http_requests.post(f"{base}/api/queue/items/add?uris={track_uri}&clear=true&playback=start", timeout=5)
+
+    return {"success": True, "outputs": outputs, "volume": volume}
+
+
+@app.post("/api/stop-playback")
+async def api_stop_playback():
+    """Stop OwnTone playback."""
+    host = get_value('owntone', 'HOST', 'host.docker.internal')
+    port = get_value('owntone', 'PORT', '3689')
+    http_requests.put(f"http://{host}:{port}/api/player/stop", timeout=5)
+    return {"success": True}
+
+
 MEDIA_DIR = '/srv/media'
 ALLOWED_AUDIO = {'.mp3', '.wav', '.ogg', '.m4a', '.flac'}
 
