@@ -117,9 +117,11 @@ def _ensure_defaults(conn):
     }
     for table, values in defaults.items():
         for key, value in values.items():
+            # Insert if missing, or update if empty
             conn.execute(
-                f"INSERT OR IGNORE INTO [{table}] (key, value) VALUES (?, ?)",
-                (key, value)
+                f"INSERT INTO [{table}] (key, value) VALUES (?, ?) "
+                f"ON CONFLICT(key) DO UPDATE SET value = ? WHERE value = '' OR value IS NULL",
+                (key, value, value)
             )
     conn.commit()
 
