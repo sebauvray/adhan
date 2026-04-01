@@ -295,6 +295,30 @@ async def api_outputs():
         raise HTTPException(status_code=502, detail=f"OwnTone inaccessible : {type(e).__name__}")
 
 
+@app.post("/api/config-field")
+async def api_config_field(payload: dict):
+    """Save a single config field. Expects {table, key, value}."""
+    table = payload.get('table')
+    key = payload.get('key')
+    value = payload.get('value', '')
+    if not table or not key:
+        raise HTTPException(status_code=400, detail="table and key required")
+    set_value(table, key, value)
+
+    # If mosque URL changed, refresh lat/lng/city
+    if table == 'config' and key == 'MOSQUE_URL' and value:
+        try:
+            data = get_full_data(value)
+            set_value('config', 'LAT', str(data.get('lat', '')))
+            set_value('config', 'LNG', str(data.get('lng', '')))
+            set_value('config', 'CITY', data.get('city', ''))
+            _cache.clear()
+        except Exception:
+            pass
+
+    return {"success": True}
+
+
 @app.get("/api/prayer-outputs")
 async def api_get_prayer_outputs():
     """Get speaker config and volumes per prayer."""

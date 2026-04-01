@@ -18,7 +18,6 @@
       height: 100vh;
     }
 
-    /* Header */
     .settings-header {
       display: flex;
       align-items: center;
@@ -26,10 +25,8 @@
       padding: 1.5rem 3rem 0;
       background: white;
     }
-
     .settings-header .logo { height: 70px; margin: 0; }
 
-    /* Title bar */
     .settings-title {
       padding: 1rem 3rem;
       background: white;
@@ -37,7 +34,6 @@
     .settings-title h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
     .settings-title .subtitle { font-size: 0.8rem; color: var(--text-dark-muted); }
 
-    /* Panels container */
     .settings-panels {
       flex: 1;
       display: flex;
@@ -55,43 +51,66 @@
 
     .settings-right {
       position: absolute;
-      top: 0;
-      right: 0;
-      width: 50%;
-      height: 100%;
+      top: 0; right: 0;
+      width: 50%; height: 100%;
       background: white;
       z-index: 3;
       clip-path: polygon(6% 0, 100% 0, 100% 100%, 0% 100%);
       padding: 1.5rem 2.5rem 1.5rem 5%;
       overflow-y: auto;
     }
-
     .settings-right::before {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background: var(--accent);
       clip-path: polygon(6% 0, calc(6% + 4px) 0, 4px 100%, 0% 100%);
       z-index: 5;
       pointer-events: none;
     }
 
-    /* Footer */
-    .settings-footer {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 0.8rem;
-      padding: 1rem 3rem;
-      background: white;
-      border-top: 1px solid rgba(0,0,0,0.06);
+    /* Mobile: stack panels */
+    @media (max-width: 768px) {
+      body.settings-page { overflow: auto; }
+      .settings-wrapper { height: auto; min-height: 100vh; }
+      .settings-header { padding: 1rem 1.5rem 0; }
+      .settings-header .logo { height: 50px; }
+      .settings-title { padding: 0.8rem 1.5rem; }
+      .settings-panels { flex-direction: column; overflow: visible; }
+      .settings-left {
+        flex: none;
+        padding: 1rem 1.5rem;
+      }
+      .settings-right {
+        position: relative;
+        width: 100%; height: auto;
+        clip-path: none;
+        padding: 1rem 1.5rem;
+        border-top: 3px solid var(--accent);
+      }
+      .settings-right::before { display: none; }
     }
 
-    #settings-msg {
-      flex: 1;
+    /* Auto-save feedback */
+    .form-group { position: relative; }
+
+    .save-indicator {
+      position: absolute;
+      right: 0;
+      top: 0;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .save-indicator.visible { opacity: 1; }
+
+    .form-group input.saved,
+    .form-group select.saved {
+      border-color: var(--accent) !important;
+      transition: border-color 0.3s;
     }
 
     /* Prayer cards */
@@ -100,12 +119,12 @@
       border-radius: 8px;
       padding: 0.8rem;
       margin-bottom: 0.6rem;
+      transition: border-color 0.3s;
     }
+    .prayer-config-card.saved { border-color: var(--accent); }
     .prayer-config-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.5rem;
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 0.5rem;
     }
     .prayer-config-name { font-weight: 600; font-size: 0.9rem; }
     .prayer-config-outputs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
@@ -125,21 +144,12 @@
     .prayer-volume input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; }
     .prayer-volume-value { min-width: 2rem; text-align: right; font-weight: 600; color: var(--accent); }
 
-    /* Upload component */
-    .upload-component {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-top: 0.3rem;
-    }
+    /* Upload */
+    .upload-component { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
     .upload-file-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.8rem;
-      background: rgba(0,0,0,0.04);
-      padding: 0.35rem 0.6rem;
-      border-radius: 6px;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; background: rgba(0,0,0,0.04);
+      padding: 0.35rem 0.6rem; border-radius: 6px;
     }
     .upload-file-tag .filename { color: var(--accent); font-weight: 500; }
     .upload-file-tag .remove-btn {
@@ -150,169 +160,243 @@
   </style>
 </head>
 <body class="settings-page">
-  <form id="settings-form" onsubmit="submitSettings(event)">
-    <div class="settings-wrapper">
+  <div class="settings-wrapper">
 
-      <!-- Header -->
-      <div class="settings-header">
-        <img src="/static/logo.png" alt="Adhan Home" class="logo">
-        <a href="/dashboard" class="back-link">&larr; Retour au dashboard</a>
-      </div>
+    <div class="settings-header">
+      <img src="/static/logo.png" alt="Adhan Home" class="logo">
+      <a href="/dashboard" class="back-link">&larr; Retour au dashboard</a>
+    </div>
 
-      <!-- Title -->
-      <div class="settings-title">
-        <h1>Paramètres</h1>
-        <p class="subtitle">Modifier la configuration d'Adhan Home</p>
-      </div>
+    <div class="settings-title">
+      <h1>Paramètres</h1>
+      <p class="subtitle">Les modifications sont sauvegardées automatiquement</p>
+    </div>
 
-      <!-- Two panels -->
-      <div class="settings-panels">
+    <div class="settings-panels">
 
-        <!-- Left: general config -->
-        <div class="settings-left">
-          <div class="form-section">
-            <h2>Mosquée</h2>
-            <div class="form-group">
-              <label for="mosque_url">URL mawaqit.net</label>
-              <input type="url" id="mosque_url" name="mosque_url" required>
+      <div class="settings-left">
+        <div class="form-section">
+          <h2>Mosquée</h2>
+          <div class="form-group">
+            <label for="mosque_url">URL mawaqit.net</label>
+            <span class="save-indicator" id="save-mosque_url">Sauvegardé</span>
+            <input type="url" id="mosque_url" data-table="config" data-key="MOSQUE_URL">
+          </div>
+        </div>
+
+        <details class="form-section">
+          <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dark-muted);padding-bottom:0.4rem;border-bottom:1px solid rgba(0,0,0,0.06)">
+            Avancé
+          </summary>
+          <div style="margin-top:0.8rem">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="log_level">Niveau de log</label>
+                <span class="save-indicator" id="save-log_level">Sauvegardé</span>
+                <select id="log_level" data-table="config" data-key="LOG_LEVEL">
+                  <option value="DEBUG">DEBUG</option>
+                  <option value="INFO">INFO</option>
+                  <option value="WARN">WARN</option>
+                  <option value="ERROR">ERROR</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="owntone_host">OwnTone hôte</label>
+                <span class="save-indicator" id="save-owntone_host">Sauvegardé</span>
+                <input type="text" id="owntone_host" data-table="owntone" data-key="HOST">
+              </div>
+              <div class="form-group">
+                <label for="owntone_port">OwnTone port</label>
+                <span class="save-indicator" id="save-owntone_port">Sauvegardé</span>
+                <input type="text" id="owntone_port" data-table="owntone" data-key="PORT">
+              </div>
             </div>
           </div>
+        </details>
 
-          <details class="form-section">
-            <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dark-muted);padding-bottom:0.4rem;border-bottom:1px solid rgba(0,0,0,0.06)">
-              Avancé
-            </summary>
+        <div class="form-section">
+          <h2>Authentification</h2>
+          <div class="form-group">
+            <label for="api_token">Token API</label>
+            <span class="save-indicator" id="save-api_token">Sauvegardé</span>
+            <input type="text" id="api_token" placeholder="Collez votre token ici">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-right">
+        <div class="form-section">
+          <h2>Alertes sonores</h2>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="sound_enabled" data-table="config" data-key="SOUND_ENABLED">
+              Activer l'appel à la prière sur les enceintes
+            </label>
+          </div>
+
+          <div id="sound-config" style="display:none">
             <div style="margin-top:0.8rem">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="log_level">Niveau de log</label>
-                  <select id="log_level" name="log_level">
-                    <option value="DEBUG">DEBUG</option>
-                    <option value="INFO">INFO</option>
-                    <option value="WARN">WARN</option>
-                    <option value="ERROR">ERROR</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="owntone_host">OwnTone hôte</label>
-                  <input type="text" id="owntone_host" name="owntone_host">
-                </div>
-                <div class="form-group">
-                  <label for="owntone_port">OwnTone port</label>
-                  <input type="text" id="owntone_port" name="owntone_port">
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <div class="form-section">
-            <h2>Authentification</h2>
-            <div class="form-group">
-              <label for="api_token">Token API</label>
-              <input type="text" id="api_token" placeholder="Collez votre token ici">
-              <button type="button" class="btn btn-secondary" style="margin-top:0.5rem;font-size:0.8rem" onclick="saveToken()">Sauvegarder le token</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: sound & per-prayer config -->
-        <div class="settings-right">
-          <div class="form-section">
-            <h2>Alertes sonores</h2>
-            <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="sound_enabled" name="sound_enabled" value="true">
-                Activer l'appel à la prière sur les enceintes
-              </label>
-            </div>
-
-            <div id="sound-config" style="display:none">
-              <div style="margin-top:0.8rem">
-                <div class="form-group">
-                  <label>Fichier audio</label>
-                  <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="display:none">
-                  <div class="upload-component">
-                    <!-- State: no custom file -->
-                    <div id="upload-default">
-                      <span style="font-size:0.8rem;color:var(--text-dark-muted)">Fichier par défaut</span>
-                      <button type="button" class="btn btn-action" style="font-size:0.75rem;padding:0.3rem 0.8rem;margin-left:0.5rem" onclick="document.getElementById('adhan_upload').click()">
-                        Personnaliser
-                      </button>
-                    </div>
-                    <!-- State: custom file uploaded -->
-                    <div id="upload-custom" style="display:none">
-                      <span class="upload-file-tag">
-                        <span class="filename" id="upload-filename"></span>
-                        <button type="button" class="remove-btn" id="upload-remove" title="Supprimer">&times;</button>
-                      </span>
-                    </div>
+              <div class="form-group">
+                <label>Fichier audio</label>
+                <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="display:none">
+                <div class="upload-component">
+                  <div id="upload-default">
+                    <span style="font-size:0.8rem;color:var(--text-dark-muted)">Fichier par défaut</span>
+                    <button type="button" class="btn btn-action" style="font-size:0.75rem;padding:0.3rem 0.8rem;margin-left:0.5rem" onclick="document.getElementById('adhan_upload').click()">
+                      Personnaliser
+                    </button>
                   </div>
-                  <div id="upload-status" style="font-size:0.75rem;margin-top:0.3rem"></div>
+                  <div id="upload-custom" style="display:none">
+                    <span class="upload-file-tag">
+                      <span class="filename" id="upload-filename"></span>
+                      <button type="button" class="remove-btn" id="upload-remove" title="Supprimer">&times;</button>
+                    </span>
+                  </div>
                 </div>
-                <div class="form-group">
-                  <label for="adhan_volume">Volume par défaut</label>
-                  <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
-                </div>
+                <div id="upload-status" style="font-size:0.75rem;margin-top:0.3rem"></div>
               </div>
-              <p style="margin-top:0.5rem;font-size:0.8rem">
-                <a id="owntone-link" href="#" target="_blank" class="link-action">
-                  Gérer les enceintes dans OwnTone &rarr;
-                </a>
-              </p>
+              <div class="form-group">
+                <label for="adhan_volume">Volume par défaut</label>
+                <span class="save-indicator" id="save-adhan_volume">Sauvegardé</span>
+                <input type="number" id="adhan_volume" data-table="owntone" data-key="ADHAN_VOLUME" min="0" max="100">
+              </div>
             </div>
-          </div>
-
-          <div class="form-section">
-            <h2>Réglage par prière</h2>
-            <div id="prayer-outputs-config">
-              <p style="font-size:0.8rem;color:var(--text-dark-muted)">Chargement des enceintes...</p>
-            </div>
+            <p style="margin-top:0.5rem;font-size:0.8rem">
+              <a id="owntone-link" href="#" target="_blank" class="link-action">
+                Gérer les enceintes dans OwnTone &rarr;
+              </a>
+            </p>
           </div>
         </div>
 
-      </div>
-
-      <!-- Footer: actions for the whole page -->
-      <div class="settings-footer">
-        <div id="settings-msg"></div>
-        <a href="/dashboard" class="btn btn-secondary">Annuler</a>
-        <button type="submit" class="btn btn-action">Sauvegarder</button>
+        <div class="form-section">
+          <h2>Réglage par prière</h2>
+          <div id="prayer-outputs-config">
+            <p style="font-size:0.8rem;color:var(--text-dark-muted)">Chargement des enceintes...</p>
+          </div>
+        </div>
       </div>
 
     </div>
-  </form>
+  </div>
 
   <script src="/static/app.js"></script>
   <script>
+    // --- Auto-save per field ---
+
+    const API_CONFIG_FIELD = '/api/config-field';
+
+    function showSaved(inputEl) {
+      // Gold border
+      inputEl.classList.add('saved');
+      // "Sauvegardé" indicator
+      const indicator = document.getElementById('save-' + inputEl.id);
+      if (indicator) indicator.classList.add('visible');
+      // Clear after 2s
+      setTimeout(() => {
+        inputEl.classList.remove('saved');
+        if (indicator) indicator.classList.remove('visible');
+      }, 2000);
+    }
+
+    function showCardSaved(card) {
+      card.classList.add('saved');
+      setTimeout(() => card.classList.remove('saved'), 2000);
+    }
+
+    async function saveField(table, key, value) {
+      const token = localStorage.getItem('adhan_token');
+      await fetch(API_CONFIG_FIELD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({ table, key, value }),
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-      // Token
+      // Load current config
+      fetch('/api/config').then(r => r.json()).then(data => {
+        const map = {
+          'mosque_url': data.mosque_url,
+          'log_level': data.log_level,
+          'owntone_host': data.owntone_host,
+          'owntone_port': data.owntone_port,
+          'adhan_volume': data.adhan_volume,
+        };
+        Object.entries(map).forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (el && val) el.value = val;
+        });
+
+        // Sound checkbox
+        const toggle = document.getElementById('sound_enabled');
+        if (toggle) {
+          toggle.checked = data.sound_enabled === 'true';
+          document.getElementById('sound-config').style.display = toggle.checked ? 'block' : 'none';
+        }
+
+        // Upload file state
+        const file = data.adhan_file || '';
+        if (file && file !== '/srv/media/adhan.mp3') showCustomFile(file.split('/').pop());
+
+        // OwnTone link
+        updateOwntoneLink();
+      });
+
+      // Auto-save: text/url/number inputs on blur
+      document.querySelectorAll('input[data-table], select[data-table]').forEach(el => {
+        if (el.type === 'checkbox') return;
+        let original = '';
+        el.addEventListener('focus', () => { original = el.value; });
+        el.addEventListener('blur', async () => {
+          if (el.value !== original) {
+            await saveField(el.dataset.table, el.dataset.key, el.value);
+            showSaved(el);
+          }
+        });
+        // Select: also save on change
+        if (el.tagName === 'SELECT') {
+          el.addEventListener('change', async () => {
+            await saveField(el.dataset.table, el.dataset.key, el.value);
+            showSaved(el);
+          });
+        }
+      });
+
+      // Auto-save: checkbox
+      const toggle = document.getElementById('sound_enabled');
+      const config = document.getElementById('sound-config');
+      if (toggle) {
+        toggle.addEventListener('change', async () => {
+          config.style.display = toggle.checked ? 'block' : 'none';
+          await saveField('config', 'SOUND_ENABLED', toggle.checked ? 'true' : 'false');
+        });
+      }
+
+      // Token (local only)
       const stored = localStorage.getItem('adhan_token');
       const tokenInput = document.getElementById('api_token');
       if (stored && tokenInput) tokenInput.value = stored;
-
-      // Sound toggle
-      const toggle = document.getElementById('sound_enabled');
-      const config = document.getElementById('sound-config');
-      if (toggle && config) {
-        toggle.addEventListener('change', () => {
-          config.style.display = toggle.checked ? 'block' : 'none';
+      if (tokenInput) {
+        let origToken = stored || '';
+        tokenInput.addEventListener('focus', () => { origToken = tokenInput.value; });
+        tokenInput.addEventListener('blur', () => {
+          if (tokenInput.value !== origToken) {
+            localStorage.setItem('adhan_token', tokenInput.value);
+            showSaved(tokenInput);
+          }
         });
       }
 
       // Prayer outputs
       loadPrayerOutputs();
 
-      // Upload: check current file
-      fetch('/api/config').then(r => r.json()).then(data => {
-        const file = data.adhan_file || '';
-        if (file && file !== '/srv/media/adhan.mp3') {
-          showCustomFile(file.split('/').pop());
-        }
-      });
-
-      // Upload: file selected
+      // Upload handlers
       const fileInput = document.getElementById('adhan_upload');
       if (fileInput) {
         fileInput.addEventListener('change', async () => {
@@ -326,30 +410,18 @@
           try {
             const resp = await fetch('/api/upload-adhan', { method: 'POST', body: formData });
             const data = await resp.json();
-            if (data.success) {
-              showCustomFile(data.filename);
-              status.textContent = '';
-            } else {
-              status.textContent = data.detail || 'Erreur';
-              status.style.color = '#c53030';
-            }
-          } catch (e) {
-            status.textContent = 'Erreur de connexion';
-            status.style.color = '#c53030';
-          }
+            if (data.success) { showCustomFile(data.filename); status.textContent = ''; }
+            else { status.textContent = data.detail || 'Erreur'; status.style.color = '#c53030'; }
+          } catch (e) { status.textContent = 'Erreur'; status.style.color = '#c53030'; }
         });
       }
 
-      // Upload: remove
       const removeBtn = document.getElementById('upload-remove');
       if (removeBtn) {
         removeBtn.addEventListener('click', async () => {
-          if (!confirm('Supprimer le fichier audio personnalisé ? Le fichier par défaut sera utilisé.')) return;
-          try {
-            await fetch('/api/upload-adhan', { method: 'DELETE' });
-            showDefaultFile();
-            if (fileInput) fileInput.value = '';
-          } catch (e) {}
+          if (!confirm('Supprimer le fichier audio personnalisé ?')) return;
+          await fetch('/api/upload-adhan', { method: 'DELETE' });
+          showDefaultFile();
         });
       }
     });
@@ -359,12 +431,12 @@
       document.getElementById('upload-custom').style.display = 'inline-flex';
       document.getElementById('upload-filename').textContent = name;
     }
-
     function showDefaultFile() {
       document.getElementById('upload-default').style.display = 'inline-flex';
       document.getElementById('upload-custom').style.display = 'none';
-      document.getElementById('upload-status').textContent = '';
     }
+
+    // --- Prayer outputs ---
 
     const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
     const PRAYER_LABELS = { Fajr: 'Fajr', Dhuhr: 'Dohr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Icha' };
@@ -373,24 +445,18 @@
       const container = document.getElementById('prayer-outputs-config');
       if (!container) return;
       try {
-        const [outputsResp, configResp] = await Promise.all([
-          fetch('/api/outputs'),
-          fetch('/api/prayer-outputs'),
-        ]);
-        if (!outputsResp.ok) {
-          container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">OwnTone inaccessible.</p>';
-          return;
-        }
+        const [outputsResp, configResp] = await Promise.all([fetch('/api/outputs'), fetch('/api/prayer-outputs')]);
+        if (!outputsResp.ok) { container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">OwnTone inaccessible.</p>'; return; }
         const outputs = (await outputsResp.json()).outputs || [];
-        const config = await configResp.json();
-        const prayerOutputs = config.outputs || {};
-        const prayerVolumes = config.volumes || {};
+        const cfg = await configResp.json();
+        const prayerOutputs = cfg.outputs || {};
+        const prayerVolumes = cfg.volumes || {};
 
         container.innerHTML = PRAYERS.map(prayer => {
           const selectedIds = (prayerOutputs[prayer] || []).map(o => o.id);
           const volume = prayerVolumes[prayer] ?? 40;
           return `
-            <div class="prayer-config-card">
+            <div class="prayer-config-card" data-prayer="${prayer}">
               <div class="prayer-config-header">
                 <span class="prayer-config-name">${PRAYER_LABELS[prayer] || prayer}</span>
               </div>
@@ -407,15 +473,27 @@
                 <input type="range" min="0" max="100" value="${volume}" data-prayer="${prayer}" oninput="this.nextElementSibling.textContent=this.value">
                 <span class="prayer-volume-value">${volume}</span>
               </div>
-            </div>
-          `;
+            </div>`;
         }).join('');
 
+        // Chip click → auto-save
         container.querySelectorAll('.output-chip').forEach(chip => {
-          chip.addEventListener('click', () => {
+          chip.addEventListener('click', async () => {
             const cb = chip.querySelector('input');
             cb.checked = !cb.checked;
             chip.classList.toggle('selected', cb.checked);
+            const card = chip.closest('.prayer-config-card');
+            await savePrayerCard(card.dataset.prayer);
+            showCardSaved(card);
+          });
+        });
+
+        // Volume change → auto-save
+        container.querySelectorAll('.prayer-volume input[type="range"]').forEach(slider => {
+          slider.addEventListener('change', async () => {
+            const card = slider.closest('.prayer-config-card');
+            await savePrayerCard(card.dataset.prayer);
+            showCardSaved(card);
           });
         });
       } catch (e) {
@@ -423,37 +501,21 @@
       }
     }
 
-    async function savePrayerOutputs() {
-      const container = document.getElementById('prayer-outputs-config');
-      if (!container) return;
-      const outputs = {};
-      const volumes = {};
-      container.querySelectorAll('.prayer-config-outputs').forEach(row => {
-        const prayer = row.dataset.prayer;
-        const selected = [];
-        row.querySelectorAll('.output-chip input:checked').forEach(cb => {
-          const chip = cb.closest('.output-chip');
-          selected.push({ id: chip.dataset.id, name: chip.dataset.name });
-        });
-        outputs[prayer] = selected;
+    async function savePrayerCard(prayer) {
+      const card = document.querySelector(`.prayer-config-card[data-prayer="${prayer}"]`);
+      if (!card) return;
+      const selected = [];
+      card.querySelectorAll('.output-chip input:checked').forEach(cb => {
+        const chip = cb.closest('.output-chip');
+        selected.push({ id: chip.dataset.id, name: chip.dataset.name });
       });
-      container.querySelectorAll('.prayer-volume input[type="range"]').forEach(slider => {
-        volumes[slider.dataset.prayer] = parseInt(slider.value);
-      });
+      const volume = parseInt(card.querySelector('input[type="range"]').value);
       const token = localStorage.getItem('adhan_token');
       await fetch('/api/prayer-outputs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
-        body: JSON.stringify({ outputs, volumes }),
+        body: JSON.stringify({ outputs: { [prayer]: selected }, volumes: { [prayer]: volume } }),
       });
-    }
-
-    function saveToken() {
-      const input = document.getElementById('api_token');
-      if (input && input.value) {
-        localStorage.setItem('adhan_token', input.value);
-        alert('Token sauvegardé dans le navigateur.');
-      }
     }
   </script>
 </body>
