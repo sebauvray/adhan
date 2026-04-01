@@ -278,6 +278,31 @@ async def api_refresh(authorization: Optional[str] = Header(None)):
     return {"success": True}
 
 
+@app.get("/api/outputs")
+async def api_outputs():
+    """Fetch available AirPlay devices from OwnTone."""
+    host = get_value('owntone', 'HOST', 'host.docker.internal')
+    port = get_value('owntone', 'PORT', '3689')
+    try:
+        resp = http_requests.get(f"http://{host}:{port}/api/outputs", timeout=5)
+        resp.raise_for_status()
+        outputs = resp.json().get('outputs', [])
+        return {
+            "outputs": [
+                {
+                    "id": o['id'],
+                    "name": o['name'],
+                    "type": o['type'],
+                    "selected": o['selected'],
+                    "volume": o['volume'],
+                }
+                for o in outputs
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"OwnTone inaccessible : {type(e).__name__}")
+
+
 MEDIA_DIR = '/srv/media'
 ALLOWED_AUDIO = {'.mp3', '.wav', '.ogg', '.m4a', '.flac'}
 

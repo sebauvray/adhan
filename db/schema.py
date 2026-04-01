@@ -90,11 +90,37 @@ def _migrate_env_to_db(conn):
     conn.commit()
 
 
+def _ensure_defaults(conn):
+    """Ensure essential default values exist in the database."""
+    defaults = {
+        'owntone': {
+            'HOST': 'host.docker.internal',
+            'PORT': '3689',
+            'ADHAN_FILE': '/srv/media/adhan.mp3',
+            'ADHAN_VOLUME': '40',
+        },
+        'config': {
+            'LOG_LEVEL': 'INFO',
+            'MORNING_TIME': '07:00-11:00',
+            'AFTERNOON_TIME': '11:00-20:00',
+            'EVENING_TIME': '20:00-06:00',
+        },
+    }
+    for table, values in defaults.items():
+        for key, value in values.items():
+            conn.execute(
+                f"INSERT OR IGNORE INTO [{table}] (key, value) VALUES (?, ?)",
+                (key, value)
+            )
+    conn.commit()
+
+
 def init_db():
     db_path = get_db_path()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.executescript(SCHEMA)
+    _ensure_defaults(conn)
     _migrate_env_to_db(conn)
     _migrate_homepod_json(conn)
     conn.close()

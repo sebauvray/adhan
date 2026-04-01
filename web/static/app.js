@@ -254,20 +254,15 @@ async function loadConfig() {
 }
 
 function updateOwntoneLink() {
-  const hostInput = document.getElementById('owntone_host');
   const portInput = document.getElementById('owntone_port');
   const link = document.getElementById('owntone-link');
   const wrapper = document.getElementById('owntone-link-wrapper');
-  if (!hostInput || !link || !wrapper) return;
+  if (!link || !wrapper) return;
 
-  const host = hostInput.value.trim();
+  // OwnTone uses host networking — always reachable on localhost from the browser
   const port = (portInput && portInput.value.trim()) || '3689';
-  if (host) {
-    link.href = `http://${host}:${port}`;
-    wrapper.style.display = 'block';
-  } else {
-    wrapper.style.display = 'none';
-  }
+  link.href = `http://${window.location.hostname}:${port}`;
+  wrapper.style.display = 'block';
 }
 
 async function submitSettings(event) {
