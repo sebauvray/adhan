@@ -38,6 +38,14 @@ services:
       - DB_PATH=/app/data/adhan.db
     restart: always
 
+  owntone-init:
+    image: alpine
+    volumes:
+      - owntone-etc:/etc/owntone
+      - owntone-media:/srv/media
+      - owntone-cache:/var/cache/owntone
+    command: sh -c "chown -R ${CURRENT_UID:-1000}:${CURRENT_GID:-1000} /etc/owntone /srv/media /var/cache/owntone"
+
   owntone:
     container_name: owntone
     image: owntone/owntone:latest
@@ -52,6 +60,9 @@ services:
       - owntone-etc:/etc/owntone
       - owntone-media:/srv/media
       - owntone-cache:/var/cache/owntone
+    depends_on:
+      owntone-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:
