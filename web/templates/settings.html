@@ -5,116 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Adhan Home - Paramètres</title>
   <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="page">
-  <div class="card">
-    <img src="/static/logo.svg" alt="Adhan Home" class="logo">
-    <a href="/dashboard" class="back-link">&larr; Retour au dashboard</a>
-    <h1>Paramètres</h1>
-    <p class="subtitle">Modifier la configuration d'Adhan Home</p>
-
-    <form id="settings-form" onsubmit="submitSettings(event)">
-
-      <!-- Mosquée -->
-      <div class="form-section">
-        <h2>Mosquée</h2>
-        <div class="form-group">
-          <label for="mosque_url">URL mawaqit.net</label>
-          <input type="url" id="mosque_url" name="mosque_url" required>
-        </div>
-      </div>
-
-      <!-- Alertes sonores -->
-      <div class="form-section">
-        <h2>Alertes sonores</h2>
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="sound_enabled" name="sound_enabled" value="true">
-            Activer l'appel à la prière sur les enceintes
-          </label>
-        </div>
-
-        <div id="sound-config" style="display:none">
-          <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
-            Choisissez les enceintes sur lesquelles diffuser l'adhan pour chaque prière.
-          </p>
-
-          <div id="prayer-outputs-config">
-            <p style="font-size:0.8rem;color:var(--text-dark-muted)">Chargement des enceintes...</p>
-          </div>
-
-          <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid rgba(0,0,0,0.06)">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="adhan_upload">Fichier audio</label>
-                <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="font-size:0.85rem">
-                <div id="upload-status" style="font-size:0.75rem;color:var(--text-dark-muted);margin-top:0.3rem"></div>
-              </div>
-              <div class="form-group">
-                <label for="adhan_volume">Volume</label>
-                <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
-              </div>
-            </div>
-          </div>
-
-          <p id="owntone-link-wrapper" style="margin-top:0.5rem;font-size:0.8rem">
-            <a id="owntone-link" href="#" target="_blank" style="color:var(--accent);text-decoration:none">
-              Gérer les enceintes dans OwnTone &rarr;
-            </a>
-          </p>
-        </div>
-      </div>
-
-      <!-- Avancé -->
-      <details class="form-section">
-        <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dark-muted);padding-bottom:0.4rem;border-bottom:1px solid rgba(0,0,0,0.06)">
-          Avancé
-        </summary>
-        <div style="margin-top:0.8rem">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="log_level">Niveau de log</label>
-              <select id="log_level" name="log_level">
-                <option value="DEBUG">DEBUG</option>
-                <option value="INFO">INFO</option>
-                <option value="WARN">WARN</option>
-                <option value="ERROR">ERROR</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="owntone_host">OwnTone hôte</label>
-              <input type="text" id="owntone_host" name="owntone_host">
-            </div>
-            <div class="form-group">
-              <label for="owntone_port">OwnTone port</label>
-              <input type="text" id="owntone_port" name="owntone_port">
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <!-- Token -->
-      <div class="form-section">
-        <h2>Authentification</h2>
-        <div class="form-group">
-          <label for="api_token">Token API (stocké localement dans votre navigateur)</label>
-          <input type="text" id="api_token" placeholder="Collez votre token ici si nécessaire">
-          <button type="button" class="btn btn-secondary" style="margin-top:0.5rem;font-size:0.8rem" onclick="saveToken()">Sauvegarder le token</button>
-        </div>
-      </div>
-
-      <div class="actions">
-        <a href="/dashboard" class="btn btn-secondary">Annuler</a>
-        <button type="submit" class="btn btn-primary">Sauvegarder</button>
-      </div>
-
-      <div id="settings-msg"></div>
-    </form>
-  </div>
-
   <style>
+    body.settings-page {
+      overflow: hidden;
+      background: white;
+    }
+
+    .settings-layout {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .settings-left {
+      flex: 0 0 55%;
+      background: white;
+      padding: 2rem 3rem;
+      overflow-y: auto;
+      z-index: 2;
+    }
+
+    .settings-right {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 48%;
+      height: 100%;
+      background: white;
+      z-index: 3;
+      clip-path: polygon(8% 0, 100% 0, 100% 100%, 0% 100%);
+      padding: 2rem 2.5rem 2rem 5%;
+      overflow-y: auto;
+    }
+
+    .settings-right::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--accent);
+      clip-path: polygon(8% 0, calc(8% + 4px) 0, 4px 100%, 0% 100%);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .settings-left .logo {
+      height: 60px;
+      margin: 0 0 1rem;
+    }
+
+    .settings-right h2:first-child {
+      margin-top: 0.5rem;
+    }
+
     .prayer-config-card {
       border: 1px solid rgba(0,0,0,0.08);
       border-radius: 8px;
@@ -148,9 +94,7 @@
       transition: all 0.15s;
       user-select: none;
     }
-    .output-chip:hover {
-      border-color: rgba(0,0,0,0.2);
-    }
+    .output-chip:hover { border-color: rgba(0,0,0,0.2); }
     .output-chip.selected {
       background: var(--accent);
       color: white;
@@ -173,18 +117,132 @@
     .prayer-volume-value {
       min-width: 2rem;
       text-align: right;
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--accent);
     }
   </style>
+</head>
+<body class="settings-page">
+  <form id="settings-form" onsubmit="submitSettings(event)">
+    <div class="settings-layout">
+
+      <!-- Left panel: general config -->
+      <div class="settings-left">
+        <img src="/static/logo.png" alt="Adhan Home" class="logo">
+        <a href="/dashboard" class="back-link">&larr; Retour au dashboard</a>
+        <h1 style="margin-bottom:0.3rem">Paramètres</h1>
+        <p class="subtitle">Modifier la configuration d'Adhan Home</p>
+
+        <!-- Mosquée -->
+        <div class="form-section">
+          <h2>Mosquée</h2>
+          <div class="form-group">
+            <label for="mosque_url">URL mawaqit.net</label>
+            <input type="url" id="mosque_url" name="mosque_url" required>
+          </div>
+        </div>
+
+        <!-- Alertes sonores -->
+        <div class="form-section">
+          <h2>Alertes sonores</h2>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="sound_enabled" name="sound_enabled" value="true">
+              Activer l'appel à la prière sur les enceintes
+            </label>
+          </div>
+
+          <div id="sound-config" style="display:none">
+            <div style="margin-top:0.8rem">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="adhan_upload">Fichier audio</label>
+                  <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="font-size:0.85rem">
+                  <div id="upload-status" style="font-size:0.75rem;color:var(--text-dark-muted);margin-top:0.3rem"></div>
+                </div>
+                <div class="form-group">
+                  <label for="adhan_volume">Volume par défaut</label>
+                  <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
+                </div>
+              </div>
+            </div>
+            <p id="owntone-link-wrapper" style="margin-top:0.5rem;font-size:0.8rem">
+              <a id="owntone-link" href="#" target="_blank" style="color:var(--accent);text-decoration:none">
+                Gérer les enceintes dans OwnTone &rarr;
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Avancé -->
+        <details class="form-section">
+          <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dark-muted);padding-bottom:0.4rem;border-bottom:1px solid rgba(0,0,0,0.06)">
+            Avancé
+          </summary>
+          <div style="margin-top:0.8rem">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="log_level">Niveau de log</label>
+                <select id="log_level" name="log_level">
+                  <option value="DEBUG">DEBUG</option>
+                  <option value="INFO">INFO</option>
+                  <option value="WARN">WARN</option>
+                  <option value="ERROR">ERROR</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="owntone_host">OwnTone hôte</label>
+                <input type="text" id="owntone_host" name="owntone_host">
+              </div>
+              <div class="form-group">
+                <label for="owntone_port">OwnTone port</label>
+                <input type="text" id="owntone_port" name="owntone_port">
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- Token -->
+        <div class="form-section">
+          <h2>Authentification</h2>
+          <div class="form-group">
+            <label for="api_token">Token API</label>
+            <input type="text" id="api_token" placeholder="Collez votre token ici si nécessaire">
+            <button type="button" class="btn btn-secondary" style="margin-top:0.5rem;font-size:0.8rem" onclick="saveToken()">Sauvegarder le token</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <a href="/dashboard" class="btn btn-secondary">Annuler</a>
+          <button type="submit" class="btn btn-primary">Sauvegarder</button>
+        </div>
+
+        <div id="settings-msg"></div>
+      </div>
+
+      <!-- Right panel: per-prayer speaker config -->
+      <div class="settings-right">
+        <h2 style="font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-dark-muted);margin-bottom:1rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(0,0,0,0.06)">
+          Enceintes par prière
+        </h2>
+
+        <div id="prayer-outputs-config">
+          <p style="font-size:0.8rem;color:var(--text-dark-muted)">Chargement des enceintes...</p>
+        </div>
+      </div>
+
+    </div>
+  </form>
+
   <script src="/static/app.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Pre-fill token
       const stored = localStorage.getItem('adhan_token');
       const input = document.getElementById('api_token');
       if (stored && input) input.value = stored;
 
-      // Toggle sound config visibility
       const toggle = document.getElementById('sound_enabled');
       const config = document.getElementById('sound-config');
       if (toggle && config) {
@@ -192,39 +250,35 @@
           config.style.display = toggle.checked ? 'block' : 'none';
         });
       }
-    });
 
-    // Load prayer outputs config
-    loadPrayerOutputs();
+      loadPrayerOutputs();
 
-    // Auto-upload when file is selected
-    const fileInput = document.getElementById('adhan_upload');
-    if (fileInput) {
-      fileInput.addEventListener('change', async () => {
-        const file = fileInput.files[0];
-        if (!file) return;
-        const status = document.getElementById('upload-status');
-        status.textContent = 'Envoi en cours...';
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-          const resp = await fetch('/api/upload-adhan', { method: 'POST', body: formData });
-          const data = await resp.json();
-          if (data.success) {
-            status.textContent = `${data.filename} uploadé`;
-            status.style.color = '#2e7d32';
-          } else {
-            status.textContent = data.detail || 'Erreur';
+      const fileInput = document.getElementById('adhan_upload');
+      if (fileInput) {
+        fileInput.addEventListener('change', async () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+          const status = document.getElementById('upload-status');
+          status.textContent = 'Envoi en cours...';
+          const formData = new FormData();
+          formData.append('file', file);
+          try {
+            const resp = await fetch('/api/upload-adhan', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (data.success) {
+              status.textContent = `${data.filename} uploadé`;
+              status.style.color = '#2e7d32';
+            } else {
+              status.textContent = data.detail || 'Erreur';
+              status.style.color = '#c53030';
+            }
+          } catch (e) {
+            status.textContent = 'Erreur de connexion';
             status.style.color = '#c53030';
           }
-        } catch (e) {
-          status.textContent = 'Erreur de connexion';
-          status.style.color = '#c53030';
-        }
-      });
-    }
+        });
+      }
+    });
 
     const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
     const PRAYER_LABELS = { Fajr: 'Fajr', Dhuhr: 'Dohr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Icha' };
@@ -232,18 +286,15 @@
     async function loadPrayerOutputs() {
       const container = document.getElementById('prayer-outputs-config');
       if (!container) return;
-
       try {
         const [outputsResp, configResp] = await Promise.all([
           fetch('/api/outputs'),
           fetch('/api/prayer-outputs'),
         ]);
-
         if (!outputsResp.ok) {
-          container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">OwnTone inaccessible. Vérifiez que le service est démarré.</p>';
+          container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">OwnTone inaccessible.</p>';
           return;
         }
-
         const outputs = (await outputsResp.json()).outputs || [];
         const config = await configResp.json();
         const prayerOutputs = config.outputs || {};
@@ -274,7 +325,6 @@
           `;
         }).join('');
 
-        // Toggle chips
         container.querySelectorAll('.output-chip').forEach(chip => {
           chip.addEventListener('click', () => {
             const cb = chip.querySelector('input');
@@ -282,7 +332,6 @@
             chip.classList.toggle('selected', cb.checked);
           });
         });
-
       } catch (e) {
         container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">Erreur de chargement</p>';
       }
@@ -291,10 +340,8 @@
     async function savePrayerOutputs() {
       const container = document.getElementById('prayer-outputs-config');
       if (!container) return;
-
       const outputs = {};
       const volumes = {};
-
       container.querySelectorAll('.prayer-config-outputs').forEach(row => {
         const prayer = row.dataset.prayer;
         const selected = [];
@@ -304,18 +351,13 @@
         });
         outputs[prayer] = selected;
       });
-
       container.querySelectorAll('.prayer-volume input[type="range"]').forEach(slider => {
         volumes[slider.dataset.prayer] = parseInt(slider.value);
       });
-
       const token = localStorage.getItem('adhan_token');
       await fetch('/api/prayer-outputs', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
         body: JSON.stringify({ outputs, volumes }),
       });
     }
