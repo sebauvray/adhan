@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY web/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+
+COPY db/       /app/db/
+COPY providers /app/providers/
+COPY web/      /app/web/
+COPY get_time_salat.py load_config.py get_homepods.py /app/
+
+EXPOSE 8080
+
+CMD ["uvicorn", "web.app:app", "--host", "0.0.0.0", "--port", "8080"]

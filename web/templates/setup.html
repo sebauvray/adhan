@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adhan Home - Installation</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page">
+  <div class="card">
+    <h1>Adhan Home</h1>
+    <p class="subtitle">Configurez votre appel à la prière automatisé</p>
+
+    <form id="setup-form" onsubmit="submitSetup(event)">
+
+      <!-- Mosquée -->
+      <div class="form-section">
+        <h2>Mosquée</h2>
+        <div class="form-group">
+          <label for="mosque_url">URL mawaqit.net de votre mosquée</label>
+          <div style="display:flex;gap:0.5rem">
+            <input type="url" id="mosque_url" name="mosque_url" placeholder="https://mawaqit.net/fr/m/votre-mosquee" required style="flex:1">
+            <button type="button" id="validate-btn" class="btn btn-secondary" onclick="validateUrl()">Vérifier</button>
+          </div>
+        </div>
+        <div id="url-preview"></div>
+      </div>
+
+      <!-- OwnTone -->
+      <div class="form-section">
+        <h2>OwnTone (audio)</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="owntone_host">Hôte OwnTone</label>
+            <input type="text" id="owntone_host" name="owntone_host" placeholder="192.168.1.101">
+          </div>
+          <div class="form-group">
+            <label for="owntone_port">Port</label>
+            <input type="text" id="owntone_port" name="owntone_port" value="3689">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="adhan_file">Chemin fichier audio</label>
+            <input type="text" id="adhan_file" name="adhan_file" value="/srv/media/adhan.mp3">
+          </div>
+          <div class="form-group">
+            <label for="adhan_volume">Volume (dB)</label>
+            <input type="number" id="adhan_volume" name="adhan_volume" value="40" min="0" max="100">
+          </div>
+        </div>
+      </div>
+
+      <!-- Périodes -->
+      <div class="form-section">
+        <h2>Plages horaires</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="morning_time">Matin</label>
+            <input type="text" id="morning_time" name="morning_time" value="07:00-11:00">
+          </div>
+          <div class="form-group">
+            <label for="afternoon_time">Après-midi</label>
+            <input type="text" id="afternoon_time" name="afternoon_time" value="11:00-20:00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="evening_time">Soir (volume réduit)</label>
+            <input type="text" id="evening_time" name="evening_time" value="20:00-06:00">
+          </div>
+          <div class="form-group">
+            <label for="log_level">Niveau de log</label>
+            <select id="log_level" name="log_level">
+              <option value="DEBUG">DEBUG</option>
+              <option value="INFO" selected>INFO</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <span></span>
+        <button type="submit" id="submit-btn" class="btn btn-primary" disabled>Installer</button>
+      </div>
+
+      <div id="setup-msg"></div>
+    </form>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

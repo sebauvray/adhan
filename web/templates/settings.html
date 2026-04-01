@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adhan Home - Paramètres</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page">
+  <div class="card">
+    <a href="/dashboard" class="back-link">&larr; Retour au dashboard</a>
+    <h1>Paramètres</h1>
+    <p class="subtitle">Modifier la configuration d'Adhan Home</p>
+
+    <form id="settings-form" onsubmit="submitSettings(event)">
+
+      <!-- Mosquée -->
+      <div class="form-section">
+        <h2>Mosquée</h2>
+        <div class="form-group">
+          <label for="mosque_url">URL mawaqit.net</label>
+          <input type="url" id="mosque_url" name="mosque_url" required>
+        </div>
+      </div>
+
+      <!-- OwnTone -->
+      <div class="form-section">
+        <h2>OwnTone</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="owntone_host">Hôte</label>
+            <input type="text" id="owntone_host" name="owntone_host">
+          </div>
+          <div class="form-group">
+            <label for="owntone_port">Port</label>
+            <input type="text" id="owntone_port" name="owntone_port">
+          </div>
+        </div>
+        <p style="margin-top:0.5rem;font-size:0.8rem">
+          <a id="owntone-link" href="#" target="_blank" style="color:var(--gold);text-decoration:none">
+            Ouvrir l'interface OwnTone &rarr;
+          </a>
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="adhan_file">Fichier audio</label>
+            <input type="text" id="adhan_file" name="adhan_file">
+          </div>
+          <div class="form-group">
+            <label for="adhan_volume">Volume</label>
+            <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
+          </div>
+        </div>
+      </div>
+
+      <!-- Périodes -->
+      <div class="form-section">
+        <h2>Plages horaires</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="morning_time">Matin</label>
+            <input type="text" id="morning_time" name="morning_time">
+          </div>
+          <div class="form-group">
+            <label for="afternoon_time">Après-midi</label>
+            <input type="text" id="afternoon_time" name="afternoon_time">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="evening_time">Soir</label>
+            <input type="text" id="evening_time" name="evening_time">
+          </div>
+          <div class="form-group">
+            <label for="log_level">Niveau de log</label>
+            <select id="log_level" name="log_level">
+              <option value="DEBUG">DEBUG</option>
+              <option value="INFO">INFO</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Token -->
+      <div class="form-section">
+        <h2>Authentification</h2>
+        <div class="form-group">
+          <label for="api_token">Token API (stocké localement dans votre navigateur)</label>
+          <input type="text" id="api_token" placeholder="Collez votre token ici si nécessaire">
+          <button type="button" class="btn btn-secondary" style="margin-top:0.5rem;font-size:0.8rem" onclick="saveToken()">Sauvegarder le token</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a href="/dashboard" class="btn btn-secondary">Annuler</a>
+        <button type="submit" class="btn btn-primary">Sauvegarder</button>
+      </div>
+
+      <div id="settings-msg"></div>
+    </form>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script>
+    // Pre-fill token field from localStorage
+    document.addEventListener('DOMContentLoaded', () => {
+      const stored = localStorage.getItem('adhan_token');
+      const input = document.getElementById('api_token');
+      if (stored && input) input.value = stored;
+    });
+
+    function saveToken() {
+      const input = document.getElementById('api_token');
+      if (input && input.value) {
+        localStorage.setItem('adhan_token', input.value);
+        alert('Token sauvegardé dans le navigateur.');
+      }
+    }
+  </script>
+</body>
+</html>

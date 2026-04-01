@@ -1,0 +1,480 @@
+/* === Variables === */
+:root {
+  --dark: #1e1e1e;
+  --dark-deep: #151515;
+  --light: #f5f0e8;
+  --accent: #c8a97e;
+  --text-primary: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --text-dark: #1a1a1a;
+  --text-dark-muted: rgba(26, 26, 26, 0.5);
+  --iqama-bg: rgba(255, 255, 255, 0.12);
+  --iqama-bg-light: rgba(0, 0, 0, 0.07);
+}
+
+/* === Reset === */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  background: var(--dark);
+}
+
+/* ==========================================
+   DASHBOARD
+   ========================================== */
+
+.dashboard {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* --- Left Panel (full background) --- */
+
+.panel-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--dark);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 3rem;
+  z-index: 1;
+}
+
+/* --- Right Panel (overlaid with diagonal cut) --- */
+
+.panel-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 42%;
+  height: 100%;
+  background: var(--light);
+  color: var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  clip-path: polygon(15% 0, 100% 0, 100% 100%, 0% 100%);
+  padding-left: 5%;
+}
+
+/* Golden diagonal line along the panel edge */
+.panel-right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  clip-path: polygon(15% 0, calc(15% + 6px) 0, 6px 100%, 0% 100%);
+  z-index: 5;
+}
+
+/* --- Top Bar --- */
+
+.top-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  width: 55%;
+}
+
+/* --- Icon Buttons (global style) --- */
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.4rem;
+  transition: color 0.2s;
+}
+
+.icon-btn:hover {
+  color: #a68a5b;
+}
+
+.icon-btn svg {
+  stroke: currentColor;
+}
+
+.settings-global {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+}
+
+/* --- Weather --- */
+
+.weather {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.weather-location {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.weather-pin {
+  flex-shrink: 0;
+  stroke: var(--text-muted);
+}
+
+.weather-condition {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.weather-icon { font-size: 3.5rem; line-height: 1; }
+.weather-temp { font-size: 3rem; font-weight: 200; }
+
+/* --- Clock --- */
+
+.clock {
+  text-align: center;
+  width: 280px;
+}
+
+.clock__date { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem; }
+.clock__time { font-size: 2.8rem; font-weight: 200; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
+
+
+/* --- Prayer List (cascading diagonal) --- */
+
+.prayers-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.2rem;
+  width: 55%;
+}
+
+.prayer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  width: 140px;
+  height: 90px;
+  transition: all 0.3s ease;
+}
+
+/* Cascade: 60% → 50% → 40% → 30% → 20% */
+.prayer-item:nth-child(1) { margin-left: 60%; }
+.prayer-item:nth-child(2) { margin-left: 50%; }
+.prayer-item:nth-child(3) { margin-left: 40%; }
+.prayer-item:nth-child(4) { margin-left: 30%; }
+.prayer-item:nth-child(5) { margin-left: 20%; }
+
+.prayer-item.past { opacity: 0.3; }
+
+.prayer-item.current {
+  transform: scale(1.08);
+  transform-origin: left center;
+}
+
+.prayer-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.prayer-item.current .prayer-name {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.prayer-time {
+  font-size: 1.3rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--text-primary);
+}
+
+.prayer-item.current .prayer-time {
+  color: var(--accent);
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.prayer-iqama {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  background: var(--iqama-bg);
+  padding: 0.25rem 0.6rem;
+  border-radius: 10px;
+  color: var(--text-muted);
+  width: fit-content;
+}
+
+.iqm-icon {
+  stroke: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* --- Next Prayer (right panel) --- */
+
+.next-prayer {
+  text-align: center;
+  padding: 0 2rem;
+}
+
+.next-header {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--iqama-bg-light);
+  padding: 0.6rem 1.4rem;
+  border-radius: 12px;
+  color: var(--text-dark-muted);
+  margin-bottom: 2rem;
+}
+
+.next-label {
+  font-size: 0.9rem;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.countdown {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.next-arabic {
+  font-family: 'Amiri', serif;
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+  direction: rtl;
+}
+
+.next-time {
+  font-size: 2.8rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--accent);
+  margin-bottom: 0.8rem;
+}
+
+#next-iqama {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  background: var(--iqama-bg-light);
+  padding: 0.3rem 0.8rem;
+  border-radius: 12px;
+  color: var(--text-dark-muted);
+}
+
+#next-iqama .iqm-icon {
+  stroke: var(--text-dark-muted);
+}
+
+/* ==========================================
+   SETUP & SETTINGS PAGES
+   ========================================== */
+
+.page {
+  min-height: 100vh;
+  background: var(--light);
+  color: var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+.card h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.card .subtitle {
+  font-size: 0.85rem;
+  color: var(--text-dark-muted);
+  margin-bottom: 2rem;
+}
+
+.form-section { margin-bottom: 1.8rem; }
+
+.form-section h2 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dark-muted);
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.form-group { margin-bottom: 0.8rem; }
+
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+  color: var(--text-dark-muted);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: #fafafa;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-primary { background: var(--dark); color: var(--text-primary); }
+.btn-primary:hover { background: #333; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-dark-muted);
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.btn-secondary:hover { background: rgba(0,0,0,0.03); }
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0ede5;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.preview-city { font-weight: 600; margin-bottom: 0.5rem; }
+
+.preview-prayers { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+.preview-prayer { display: flex; gap: 0.3rem; align-items: baseline; }
+.preview-prayer .name { font-weight: 500; font-size: 0.75rem; color: var(--text-dark-muted); }
+.preview-prayer .time { font-weight: 600; }
+
+.msg {
+  padding: 0.8rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+}
+
+.msg-error { background: #fde8e8; color: #c53030; }
+.msg-success { background: #e8f5e9; color: #2e7d32; }
+
+.token-display {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fff3e0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+.token-display strong { display: block; margin-bottom: 0.3rem; }
+.token-display code {
+  display: block;
+  background: rgba(0,0,0,0.05);
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-dark-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+.back-link:hover { color: var(--text-dark); }
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-left-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-left: 0.5rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
