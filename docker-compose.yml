@@ -42,6 +42,9 @@ services:
     container_name: owntone
     image: owntone/owntone:latest
     network_mode: host
+    privileged: true
+    tmpfs:
+      - /run
     environment:
       - UID=${CURRENT_UID:-1000}
       - GID=${CURRENT_GID:-1000}
