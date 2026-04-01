@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS homepods (
     evening   INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS prayer_outputs (
+    prayer      TEXT NOT NULL,
+    output_id   TEXT NOT NULL,
+    output_name TEXT NOT NULL,
+    PRIMARY KEY (prayer, output_id)
+);
+
 CREATE TABLE IF NOT EXISTS api_tokens (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     token       TEXT    UNIQUE NOT NULL,

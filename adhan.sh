@@ -138,17 +138,25 @@ resolve_track_uri() {
 
 # --- Main ---
 
-CURRENT_PERIOD=$(get_current_period)
-log DEBUG "Période actuelle : $CURRENT_PERIOD"
+PRAYER_NAME="${1:-}"
+if [[ -z "$PRAYER_NAME" ]]; then
+  log ERROR "No prayer name provided. Usage: adhan.sh <prayer_name>"
+  exit 1
+fi
 
-readarray -t HOMEPODS < <(get_outputs_for_period "$CURRENT_PERIOD")
+log INFO "Adhan triggered for: $PRAYER_NAME"
+
+# Get configured outputs for this prayer
+readarray -t HOMEPODS < <(python3 /app/get_homepods.py "$PRAYER_NAME")
 if [ ${#HOMEPODS[@]} -eq 0 ]; then
-  log WARN "Aucun HomePod configuré pour la période '$CURRENT_PERIOD'"
+  log WARN "No outputs configured for $PRAYER_NAME"
   exit 0
 fi
 
-log DEBUG "HomePods détectés pour cette période : ${HOMEPODS[*]}"
+log DEBUG "Outputs for $PRAYER_NAME: ${HOMEPODS[*]}"
 
+# Evening volume reduction
+CURRENT_PERIOD=$(get_current_period)
 if [[ "$CURRENT_PERIOD" == "evening" ]]; then
   ADHAN_VOLUME=20
 fi
@@ -157,7 +165,7 @@ OUTPUTS_JSON=$(curl -s "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs")
 readarray -t OUTPUT_IDS < <(get_output_ids_for_names "$OUTPUTS_JSON" "${HOMEPODS[@]}")
 
 if [[ ${#OUTPUT_IDS[@]} -eq 0 ]]; then
-  log ERROR "Aucune sortie valide trouvée dans OwnTone"
+  log ERROR "No valid OwnTone outputs found for $PRAYER_NAME"
   exit 1
 fi
 

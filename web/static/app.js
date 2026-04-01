@@ -301,6 +301,8 @@ async function submitSettings(event) {
 
     const result = await resp.json();
     if (result.success) {
+      // Also save prayer outputs if available
+      if (typeof savePrayerOutputs === 'function') await savePrayerOutputs();
       msgEl.innerHTML = 'Configuration mise à jour. Les horaires seront recalculés.';
       msgEl.className = 'msg msg-success';
     }

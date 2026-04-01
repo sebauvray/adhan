@@ -16,7 +16,8 @@ sys.path.insert(0, '/app')
 from db.schema import init_db
 from db.config import (
     get_value, set_value, get_all, get_homepods, set_homepods,
-    is_configured, get_token, create_token, validate_token
+    is_configured, get_token, create_token, validate_token,
+    get_prayer_outputs, set_prayer_outputs
 )
 from providers.mawaqit_http_provider import get_full_data
 
@@ -301,6 +302,20 @@ async def api_outputs():
         }
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"OwnTone inaccessible : {type(e).__name__}")
+
+
+@app.get("/api/prayer-outputs")
+async def api_get_prayer_outputs():
+    """Get speaker config per prayer."""
+    return get_prayer_outputs()
+
+
+@app.post("/api/prayer-outputs")
+async def api_set_prayer_outputs(payload: dict):
+    """Save speaker config per prayer. Expects {prayer: [{id, name}, ...]}."""
+    for prayer, outputs in payload.items():
+        set_prayer_outputs(prayer, outputs)
+    return {"success": True}
 
 
 MEDIA_DIR = '/srv/media'

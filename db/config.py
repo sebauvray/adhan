@@ -105,3 +105,55 @@ def validate_token(token):
         return row is not None
     except Exception:
         return False
+
+
+def get_prayer_outputs(prayer=None):
+    """Get configured outputs per prayer. Returns dict {prayer: [output_names]}."""
+    try:
+        conn = _connect()
+        if prayer:
+            cur = conn.execute(
+                "SELECT prayer, output_id, output_name FROM prayer_outputs WHERE prayer = ?",
+                (prayer,)
+            )
+        else:
+            cur = conn.execute("SELECT prayer, output_id, output_name FROM prayer_outputs")
+        rows = cur.fetchall()
+        conn.close()
+
+        result = {}
+        for p, oid, oname in rows:
+            if p not in result:
+                result[p] = []
+            result[p].append({"id": oid, "name": oname})
+        return result
+    except Exception:
+        return {}
+
+
+def set_prayer_outputs(prayer, outputs):
+    """Set outputs for a prayer. outputs = [{"id": "...", "name": "..."}]."""
+    conn = _connect()
+    conn.execute("DELETE FROM prayer_outputs WHERE prayer = ?", (prayer,))
+    for o in outputs:
+        conn.execute(
+            "INSERT INTO prayer_outputs (prayer, output_id, output_name) VALUES (?, ?, ?)",
+            (prayer, o['id'], o['name'])
+        )
+    conn.commit()
+    conn.close()
+
+
+def get_outputs_for_prayer(prayer):
+    """Get output names for a specific prayer (used by adhan.sh)."""
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT output_name FROM prayer_outputs WHERE prayer = ?",
+            (prayer,)
+        )
+        names = [r[0] for r in cur.fetchall()]
+        conn.close()
+        return names
+    except Exception:
+        return []

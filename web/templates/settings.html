@@ -35,22 +35,28 @@
 
         <div id="sound-config" style="display:none">
           <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
-            OwnTone est installé automatiquement avec Adhan Home pour diffuser l'adhan sur vos enceintes AirPlay (HomePod, etc.).
+            Choisissez les enceintes sur lesquelles diffuser l'adhan pour chaque prière.
           </p>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="adhan_upload">Fichier audio de l'adhan</label>
-              <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="font-size:0.85rem">
-              <div id="upload-status" style="font-size:0.75rem;color:var(--text-dark-muted);margin-top:0.3rem"></div>
-            </div>
-            <div class="form-group">
-              <label for="adhan_volume">Volume</label>
-              <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
+          <div id="prayer-outputs-config">
+            <p style="font-size:0.8rem;color:var(--text-dark-muted)">Chargement des enceintes...</p>
+          </div>
+
+          <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid rgba(0,0,0,0.06)">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="adhan_upload">Fichier audio</label>
+                <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="font-size:0.85rem">
+                <div id="upload-status" style="font-size:0.75rem;color:var(--text-dark-muted);margin-top:0.3rem"></div>
+              </div>
+              <div class="form-group">
+                <label for="adhan_volume">Volume</label>
+                <input type="number" id="adhan_volume" name="adhan_volume" min="0" max="100">
+              </div>
             </div>
           </div>
 
-          <p id="owntone-link-wrapper" style="margin-top:0.3rem;font-size:0.8rem">
+          <p id="owntone-link-wrapper" style="margin-top:0.5rem;font-size:0.8rem">
             <a id="owntone-link" href="#" target="_blank" style="color:var(--accent);text-decoration:none">
               Gérer les enceintes dans OwnTone &rarr;
             </a>
@@ -121,6 +127,50 @@
     </form>
   </div>
 
+  <style>
+    .prayer-config-card {
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 8px;
+      padding: 0.8rem;
+      margin-bottom: 0.6rem;
+    }
+    .prayer-config-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .prayer-config-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .prayer-config-outputs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .output-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 20px;
+      border: 1px solid rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .output-chip:hover {
+      border-color: rgba(0,0,0,0.2);
+    }
+    .output-chip.selected {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .output-chip input { display: none; }
+  </style>
   <script src="/static/app.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -138,6 +188,9 @@
         });
       }
     });
+
+    // Load prayer outputs config
+    loadPrayerOutputs();
 
     // Auto-upload when file is selected
     const fileInput = document.getElementById('adhan_upload');
@@ -165,6 +218,86 @@
           status.textContent = 'Erreur de connexion';
           status.style.color = '#c53030';
         }
+      });
+    }
+
+    const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    const PRAYER_LABELS = { Fajr: 'Fajr', Dhuhr: 'Dohr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Icha' };
+
+    async function loadPrayerOutputs() {
+      const container = document.getElementById('prayer-outputs-config');
+      if (!container) return;
+
+      try {
+        const [outputsResp, configResp] = await Promise.all([
+          fetch('/api/outputs'),
+          fetch('/api/prayer-outputs'),
+        ]);
+
+        if (!outputsResp.ok) {
+          container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">OwnTone inaccessible. Vérifiez que le service est démarré.</p>';
+          return;
+        }
+
+        const outputs = (await outputsResp.json()).outputs || [];
+        const config = await configResp.json();
+
+        container.innerHTML = PRAYERS.map(prayer => {
+          const selectedIds = (config[prayer] || []).map(o => o.id);
+          return `
+            <div class="prayer-config-card">
+              <div class="prayer-config-header">
+                <span class="prayer-config-name">${PRAYER_LABELS[prayer] || prayer}</span>
+              </div>
+              <div class="prayer-config-outputs" data-prayer="${prayer}">
+                ${outputs.map(o => `
+                  <label class="output-chip ${selectedIds.includes(o.id) ? 'selected' : ''}" data-id="${o.id}" data-name="${o.name}">
+                    <input type="checkbox" ${selectedIds.includes(o.id) ? 'checked' : ''}>
+                    ${o.name}
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Toggle chips
+        container.querySelectorAll('.output-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            const cb = chip.querySelector('input');
+            cb.checked = !cb.checked;
+            chip.classList.toggle('selected', cb.checked);
+          });
+        });
+
+      } catch (e) {
+        container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">Erreur de chargement</p>';
+      }
+    }
+
+    async function savePrayerOutputs() {
+      const container = document.getElementById('prayer-outputs-config');
+      if (!container) return;
+
+      const payload = {};
+      container.querySelectorAll('.prayer-config-outputs').forEach(row => {
+        const prayer = row.dataset.prayer;
+        const selected = [];
+        row.querySelectorAll('.output-chip input:checked').forEach(cb => {
+          const chip = cb.closest('.output-chip');
+          selected.push({ id: chip.dataset.id, name: chip.dataset.name });
+        });
+        payload[prayer] = selected;
+      });
+
+      const token = localStorage.getItem('adhan_token');
+      await fetch('/api/prayer-outputs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify(payload),
       });
     }
 
