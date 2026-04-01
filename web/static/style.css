@@ -109,6 +109,14 @@ body.dashboard-page {
   color: #a68a5b;
 }
 
+/* Action links (same accent color as buttons) */
+.link-action {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.link-action:hover { color: #a68a5b; }
+
 .icon-btn svg {
   stroke: currentColor;
 }
@@ -396,15 +404,18 @@ body.dashboard-page {
   font-family: inherit;
 }
 
-.btn-primary { background: var(--dark); color: var(--text-primary); }
-.btn-primary:hover { background: #333; }
+.btn-action {
+  background: var(--accent);
+  color: white;
+}
+.btn-action:hover { background: #a68a5b; }
 
 .btn-secondary {
   background: transparent;
   color: var(--text-dark-muted);
   border: 1px solid rgba(0,0,0,0.12);
 }
-.btn-secondary:hover { background: rgba(0,0,0,0.03); }
+.btn-secondary:hover { color: var(--text-dark); border-color: rgba(0,0,0,0.25); }
 
 .actions {
   display: flex;
