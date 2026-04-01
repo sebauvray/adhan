@@ -1,5 +1,4 @@
 .env
 data/
-owntone/
 __pycache__/
 *.pyc
