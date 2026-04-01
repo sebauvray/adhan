@@ -5,14 +5,89 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Adhan Home - Installation</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .step { display: none; }
+    .step.active { display: block; }
+
+    .steps-indicator {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    .steps-indicator .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.12);
+      transition: background 0.3s;
+    }
+    .steps-indicator .dot.active {
+      background: var(--accent);
+    }
+
+    .choice-cards {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.8rem;
+    }
+    .choice-card {
+      flex: 1;
+      padding: 1.2rem;
+      border: 2px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .choice-card:hover {
+      border-color: rgba(0,0,0,0.15);
+    }
+    .choice-card.selected {
+      border-color: var(--accent);
+      background: rgba(200,169,126,0.06);
+    }
+    .choice-card .choice-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .choice-card .choice-label {
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .choice-card .choice-desc {
+      font-size: 0.75rem;
+      color: var(--text-dark-muted);
+      margin-top: 0.3rem;
+    }
+
+    .recap {
+      background: #f0ede5;
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 0.85rem;
+    }
+    .recap-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+    }
+    .recap-label { color: var(--text-dark-muted); }
+    .recap-value { font-weight: 500; }
+  </style>
 </head>
 <body class="page">
   <div class="card">
     <h1>Adhan Home</h1>
-    <p class="subtitle">Configurez votre appel à la prière automatisé</p>
+    <p class="subtitle">Installation en quelques étapes</p>
 
-    <form id="setup-form" onsubmit="submitSetup(event)">
+    <div class="steps-indicator">
+      <div class="dot active" data-step="0"></div>
+      <div class="dot" data-step="1"></div>
+      <div class="dot" data-step="2"></div>
+    </div>
 
+    <!-- Step 1: Mosque -->
+    <div class="step active" id="step-0">
       <div class="form-section">
         <h2>Votre mosquée</h2>
         <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
@@ -22,22 +97,228 @@
         <div class="form-group">
           <label for="mosque_url">URL mawaqit.net</label>
           <div style="display:flex;gap:0.5rem">
-            <input type="url" id="mosque_url" name="mosque_url" placeholder="https://mawaqit.net/fr/m/votre-mosquee" required style="flex:1">
-            <button type="button" id="validate-btn" class="btn btn-secondary" onclick="validateUrl()">Vérifier</button>
+            <input type="url" id="mosque_url" placeholder="https://mawaqit.net/fr/m/votre-mosquee" required style="flex:1">
+            <button type="button" id="validate-btn" class="btn btn-secondary" onclick="validateSetupUrl()">Vérifier</button>
           </div>
         </div>
         <div id="url-preview"></div>
       </div>
-
       <div class="actions">
         <span></span>
-        <button type="submit" id="submit-btn" class="btn btn-primary" disabled>Installer</button>
+        <button type="button" id="next-1" class="btn btn-primary" disabled onclick="goToStep(1)">Suivant</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Sound -->
+    <div class="step" id="step-1">
+      <div class="form-section">
+        <h2>Alertes sonores</h2>
+        <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
+          Souhaitez-vous que l'adhan soit diffusé sur vos enceintes (HomePod, AirPlay) aux heures de prière ?
+        </p>
+
+        <div class="choice-cards">
+          <div class="choice-card" onclick="selectSound(true)" id="choice-yes">
+            <div class="choice-icon">🔊</div>
+            <div class="choice-label">Oui</div>
+            <div class="choice-desc">Diffuser l'adhan sur mes enceintes</div>
+          </div>
+          <div class="choice-card" onclick="selectSound(false)" id="choice-no">
+            <div class="choice-icon">🔇</div>
+            <div class="choice-label">Non</div>
+            <div class="choice-desc">Afficher les horaires uniquement</div>
+          </div>
+        </div>
       </div>
 
-      <div id="setup-msg"></div>
-    </form>
+      <div id="sound-upload-section" style="display:none">
+        <div class="form-section" style="margin-top:1rem">
+          <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
+            Un fichier adhan par défaut est fourni. Vous pouvez le remplacer par le vôtre (optionnel).
+          </p>
+          <div class="form-group">
+            <label for="adhan_upload">Fichier audio personnalisé (optionnel)</label>
+            <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="font-size:0.85rem">
+            <div id="upload-status" style="font-size:0.75rem;color:var(--text-dark-muted);margin-top:0.3rem"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:1.5rem">
+        <button type="button" class="btn btn-secondary" onclick="goToStep(0)">Retour</button>
+        <button type="button" id="next-2" class="btn btn-primary" disabled onclick="finishSetup()">Installer</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div class="step" id="step-2">
+      <div class="form-section">
+        <h2>Installation terminée</h2>
+
+        <div class="recap" id="setup-recap"></div>
+
+        <div id="token-section" style="display:none;margin-top:1rem">
+          <div class="token-display">
+            <strong>Votre token API (à conserver)</strong>
+            <p style="font-size:0.75rem;color:var(--text-dark-muted);margin-bottom:0.3rem">
+              Ce token permet de modifier la configuration depuis l'API. Il ne sera affiché qu'une seule fois.
+            </p>
+            <code id="api-token-value"></code>
+          </div>
+        </div>
+
+        <p style="margin-top:1.5rem;font-size:0.85rem;color:var(--text-dark-muted)">
+          Redirection vers le dashboard dans <span id="redirect-countdown">5</span> secondes...
+        </p>
+      </div>
+      <div class="actions">
+        <span></span>
+        <a href="/dashboard" class="btn btn-primary">Accéder au dashboard</a>
+      </div>
+    </div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script>
+    let setupData = { mosque_url: '', sound_enabled: 'false', city: '' };
+
+    function goToStep(n) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById('step-' + n).classList.add('active');
+      document.querySelectorAll('.dot').forEach(d => d.classList.remove('active'));
+      for (let i = 0; i <= n; i++) {
+        document.querySelector('.dot[data-step="' + i + '"]').classList.add('active');
+      }
+    }
+
+    async function validateSetupUrl() {
+      const input = document.getElementById('mosque_url');
+      const preview = document.getElementById('url-preview');
+      const btn = document.getElementById('validate-btn');
+      const url = input.value.trim();
+      if (!url) return;
+
+      btn.disabled = true;
+      btn.innerHTML = 'Vérification<span class="spinner"></span>';
+      preview.innerHTML = '';
+
+      try {
+        const resp = await fetch('/api/validate-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+        const data = await resp.json();
+
+        if (data.valid) {
+          let html = `<div class="preview"><div class="preview-city">${data.city}</div><div class="preview-prayers">`;
+          data.prayers.forEach(p => {
+            html += `<div class="preview-prayer"><span class="name">${p.name}</span> <span class="time">${p.adhan}</span></div>`;
+          });
+          html += '</div></div>';
+          preview.innerHTML = html;
+          setupData.mosque_url = url;
+          setupData.city = data.city;
+          document.getElementById('next-1').disabled = false;
+        } else {
+          preview.innerHTML = `<div class="msg msg-error">${data.error}</div>`;
+          document.getElementById('next-1').disabled = true;
+        }
+      } catch (e) {
+        preview.innerHTML = '<div class="msg msg-error">Erreur de connexion</div>';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Vérifier';
+    }
+
+    function selectSound(enabled) {
+      setupData.sound_enabled = enabled ? 'true' : 'false';
+
+      document.getElementById('choice-yes').classList.toggle('selected', enabled);
+      document.getElementById('choice-no').classList.toggle('selected', !enabled);
+      document.getElementById('sound-upload-section').style.display = enabled ? 'block' : 'none';
+      document.getElementById('next-2').disabled = false;
+    }
+
+    // Auto-upload when file is selected
+    document.addEventListener('DOMContentLoaded', () => {
+      const fileInput = document.getElementById('adhan_upload');
+      if (fileInput) {
+        fileInput.addEventListener('change', async () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+          const status = document.getElementById('upload-status');
+          status.textContent = 'Envoi en cours...';
+          status.style.color = '';
+
+          const formData = new FormData();
+          formData.append('file', file);
+
+          try {
+            const resp = await fetch('/api/upload-adhan', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (data.success) {
+              status.textContent = data.filename + ' uploadé';
+              status.style.color = '#2e7d32';
+            } else {
+              status.textContent = data.detail || 'Erreur';
+              status.style.color = '#c53030';
+            }
+          } catch (e) {
+            status.textContent = 'Erreur de connexion';
+            status.style.color = '#c53030';
+          }
+        });
+      }
+    });
+
+    async function finishSetup() {
+      const btn = document.getElementById('next-2');
+      btn.disabled = true;
+      btn.innerHTML = 'Installation<span class="spinner"></span>';
+
+      try {
+        const resp = await fetch('/api/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(setupData),
+        });
+        const result = await resp.json();
+
+        if (result.success) {
+          // Show recap
+          const recap = document.getElementById('setup-recap');
+          recap.innerHTML = `
+            <div class="recap-row"><span class="recap-label">Mosquée</span><span class="recap-value">${setupData.city}</span></div>
+            <div class="recap-row"><span class="recap-label">Alertes sonores</span><span class="recap-value">${setupData.sound_enabled === 'true' ? 'Activées' : 'Désactivées'}</span></div>
+          `;
+
+          // Show token if new
+          if (result.token) {
+            localStorage.setItem('adhan_token', result.token);
+            document.getElementById('token-section').style.display = 'block';
+            document.getElementById('api-token-value').textContent = result.token;
+          }
+
+          goToStep(2);
+
+          // Countdown redirect
+          let seconds = 5;
+          const countdownEl = document.getElementById('redirect-countdown');
+          const interval = setInterval(() => {
+            seconds--;
+            countdownEl.textContent = seconds;
+            if (seconds <= 0) {
+              clearInterval(interval);
+              window.location.href = '/dashboard';
+            }
+          }, 1000);
+        }
+      } catch (e) {
+        btn.textContent = 'Installer';
+        btn.disabled = false;
+      }
+    }
+  </script>
 </body>
 </html>
