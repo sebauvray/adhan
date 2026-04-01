@@ -1,33 +1,37 @@
 services:
 
-  selenium:
-    image: adhan_home
+  web:
+    build:
+      context: .
+      dockerfile: web/dockerfile
+    container_name: adhan-web
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    volumes:
+      - ./data:/app/data
+      - cron-data:/etc/cron.d
     environment:
-      - TZ=${TZ}
+      - TZ=${TZ:-Europe/Paris}
+      - DB_PATH=/app/data/adhan.db
+    restart: always
+
+  adhan:
     build:
       context: .
       dockerfile: docker/dockerfile
       args:
-        - CURRENT_USER=${CURRENT_USER}
-        - CURRENT_UID=${CURRENT_UID}
+        - DEBIAN_VERSION=${DEBIAN_VERSION:-bookworm}
+        - GECKODRIVER_VERSION=${GECKODRIVER_VERSION:-v0.34.0}
+        - AUTONOMOUS=${AUTONOMOUS:-false}
     container_name: ${CONTAINER_NAME_ADHAN:-adhan-home}
-    env_file: .env
-    restart: always
-    # volumes:
-    #   - ./:/var/www/html
-  homeassistant:
-    container_name: homeassistant
-    image: "ghcr.io/home-assistant/home-assistant:stable"
     volumes:
-      - VOLUME_HOME_ASSISTANT:/config
-      - /etc/localtime:/etc/localtime:ro
-      - /run/dbus:/run/dbus:ro
+      - ./data:/app/data
+      - cron-data:/etc/cron.d
+    environment:
+      - TZ=${TZ:-Europe/Paris}
+      - AUTONOMOUS=${AUTONOMOUS:-false}
+      - DB_PATH=/app/data/adhan.db
     restart: always
-    privileged: true
-    network_mode: host
-    #For use Zigbee
-    # devices:
-    #   - /dev/ttyUSB0:/dev/ttyUSB0
 
   owntone:
     container_name: owntone
@@ -37,11 +41,13 @@ services:
       - UID=${CURRENT_UID:-1000}
       - GID=${CURRENT_GID:-1000}
     volumes:
-      - "${HOME}/OwnTone/etc:/etc/owntone"
-      - "${HOME}/OwnTone/media:/srv/media"
-      - "${HOME}/OwnTone/cache:/var/cache/owntone"
+      - owntone-etc:/etc/owntone
+      - owntone-media:/srv/media
+      - owntone-cache:/var/cache/owntone
     restart: unless-stopped
 
 volumes:
-  VOLUME_HOME_ASSISTANT:
-  VOLUME_OWNTONE:
+  cron-data:
+  owntone-etc:
+  owntone-media:
+  owntone-cache:

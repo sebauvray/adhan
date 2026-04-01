@@ -1,77 +1,73 @@
-FROM debian:buster
+ARG DEBIAN_VERSION=bookworm
+FROM debian:${DEBIAN_VERSION}
 
-RUN sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list && \
-    sed -i 's|http://security.debian.org|http://archive.debian.org/debian-security|g' /etc/apt/sources.list && \
-    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
-
-ARG CURRENT_USER \
-    CURRENT_UID \
-    TZ
+ARG TZ \
+    AUTONOMOUS=false \
+    GECKODRIVER_VERSION=v0.34.0
 
 WORKDIR /app
 
+# Packages de base (toujours installés)
 RUN apt-get update && apt-get install -y \
     tzdata \
     wget \
-    firefox-esr \
     python3 \
     python3-pip \
-    cron  \
+    cron \
     jq \
     curl \
+    && if [ "$AUTONOMOUS" = "true" ]; then apt-get install -y firefox-esr; fi \
     && rm -rf /var/lib/apt/lists/*
 
-#TIMEZONE
+# Timezone
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# GECKODRIVER FOR FIREFOX / SELENIUM
-ENV GECKODRIVER_VERSION=v0.34.0
+# Geckodriver — uniquement si AUTONOMOUS=true
+RUN if [ "$AUTONOMOUS" = "true" ]; then \
+      ARCH=$(uname -m) && case "$ARCH" in \
+        x86_64)  ARCH="linux64" ;; \
+        aarch64) ARCH="linux-aarch64" ;; \
+        arm*)    ARCH="linux-armhf" ;; \
+        *) echo "Architecture non supportée"; exit 1 ;; \
+      esac && \
+      wget -O geckodriver.tar.gz \
+        "https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-$ARCH.tar.gz" \
+      && tar -xzf geckodriver.tar.gz \
+      && mv geckodriver /usr/local/bin/ \
+      && chmod +x /usr/local/bin/geckodriver \
+      && rm geckodriver.tar.gz; \
+    fi
 
-RUN ARCH=$(uname -m) && case "$ARCH" in \
-    x86_64) ARCH="linux64" ;; \
-    aarch64) ARCH="linux-aarch64" ;; \
-    arm*) ARCH="linux-armhf" ;; \
-    *) echo "Architecture non supportée"; exit 1 ;; \
-    esac && \
-    wget -O geckodriver.tar.gz "https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-$ARCH.tar.gz" \
-    && tar -xzf geckodriver.tar.gz \
-    && mv geckodriver /usr/local/bin/ \
-    && rm geckodriver.tar.gz
-
-RUN chmod +x /usr/local/bin/geckodriver
-
-#PYTHON
-RUN python3 -m pip install --upgrade pip
+# Dépendances Python
 COPY docker/requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
-RUN rm requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt \
+    && if [ "$AUTONOMOUS" = "true" ]; then \
+         pip3 install --no-cache-dir --break-system-packages selenium; \
+       fi \
+    && rm requirements.txt
 
-#SCRIPT PYTHON FOR GET SALAT TIME
+# Module DB
+COPY ./db /app/db
+
+# Scripts
 COPY ./get_time_salat.py /app/get_time_salat.py
-RUN chmod +x /app/get_time_salat.py
-
-#SCRIPT PYTHON FOR API HOMEASSISTANT
-COPY ./home_assistant.py /app/home_assistant.py
-RUN chmod +x /app/home_assistant.py
-
-#SCRIPT PYTHON FOR API HOMEASSISTANT
-COPY ./adhan.sh /app/adhan.sh
+COPY ./next_salat.py     /app/next_salat.py
+COPY ./load_config.py    /app/load_config.py
+COPY ./get_homepods.py   /app/get_homepods.py
+COPY ./adhan.sh          /app/adhan.sh
 RUN chmod +x /app/adhan.sh
 
-#SCRIPT PYTHON FOR API HOMEASSISTANT
-COPY ./next_salat.py /app/next_salat.py
-RUN chmod +x /app/next_salat.py
+# Providers
+COPY ./providers /app/providers
 
-#JSON FOR SELECTING HOMEPODS
+# HomePod.json (migration legacy vers SQLite)
 COPY ./HomePod.json /app/HomePod.json
-RUN chmod +x /app/HomePod.json
 
-#CRON
-ADD ./salat.crontab /etc/cron.d/salat.crontab
+# Cron
+COPY ./salat.crontab /etc/cron.d/salat.crontab
 RUN touch /var/log/cron.log
-RUN crontab /etc/cron.d/salat.crontab
 
-#SCRIPT ON START CONTAINER
+# Entrypoint
 COPY ./startup.sh /opt/startup.sh
 RUN chmod +x /opt/startup.sh
 CMD ["/opt/startup.sh"]
