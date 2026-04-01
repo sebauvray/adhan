@@ -3,7 +3,8 @@ import os
 from datetime import datetime, timedelta
 
 # Path to the cron file (set this according to your environment)
-cron_file_path = os.environ.get('PATH_CRON')
+cron_dir = os.environ.get('PATH_CRON', '/etc/cron.d')
+cron_file_path = os.path.join(cron_dir, 'salat.crontab')
 
 # Dictionary of prayer names with phonetic versions for Siri
 phonetic_names = {
@@ -58,11 +59,11 @@ def next_prayer(prayer_times):
 
 
 prayer_times = read_prayers_and_times(cron_file_path)
-next_prayer = next_prayer(prayer_times)
+result = next_prayer(prayer_times)
 
-# Extract the prayer name and time from the `next_prayer` list
-prayer_name = next_prayer[0]
-prayer_time = next_prayer[1]
+# Extract the prayer name and time from the result list
+prayer_name = result[0]
+prayer_time = result[1]
 prayer_name_phonetic = get_phonetic_name(prayer_name)
 
 # Display the result in a readable format
