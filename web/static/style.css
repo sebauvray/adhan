@@ -18,8 +18,11 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
   background: var(--dark);
+}
+
+body.dashboard-page {
+  overflow: hidden;
 }
 
 /* ==========================================
@@ -452,6 +455,12 @@ body {
   border-radius: 4px;
   margin-top: 0.3rem;
   font-size: 0.8rem;
+}
+
+.logo {
+  display: block;
+  height: 40px;
+  margin-bottom: 1.5rem;
 }
 
 .back-link {

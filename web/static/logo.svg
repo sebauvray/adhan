@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50">
+  <!-- Crescent moon -->
+  <circle cx="22" cy="25" r="15" fill="#c8a97e"/>
+  <circle cx="30" cy="20" r="13" fill="white"/>
+  <!-- Text -->
+  <text x="50" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="600" fill="#1a1a1a">Adhan Home</text>
+</svg>
