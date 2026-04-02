@@ -148,6 +148,24 @@ async def api_prayers():
     return {"prayers": result, "next": next_prayer}
 
 
+@app.get("/api/next-prayer")
+async def api_next_prayer():
+    data = await api_prayers()
+    n = data.get("next")
+    if not n:
+        raise HTTPException(status_code=503, detail="Aucune prière à venir")
+    h = n['seconds_until'] // 3600
+    m = (n['seconds_until'] % 3600) // 60
+    return {
+        "name": n['name'],
+        "arabic": n.get('arabic', ''),
+        "adhan": n['adhan'],
+        "iqama": n['iqama'],
+        "seconds_until": n['seconds_until'],
+        "time_until": f"{h}h{m:02d}",
+    }
+
+
 @app.get("/api/weather")
 async def api_weather():
     lat = get_value('config', 'LAT')
