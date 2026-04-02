@@ -26,62 +26,43 @@ body.dashboard-page {
 }
 
 /* ==========================================
-   DASHBOARD
+   DASHBOARD — Mobile first
    ========================================== */
 
 .dashboard {
   width: 100vw;
   height: 100vh;
-  position: relative;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-/* --- Left Panel (full background) --- */
+/* --- Left Panel --- */
 
 .panel-left {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  flex: 1;
   background: var(--dark);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  padding: 2rem 3rem;
-  z-index: 1;
+  padding: 1rem 1.2rem;
+  min-height: 0;
 }
 
-/* --- Right Panel (overlaid with diagonal cut) --- */
+/* --- Right Panel --- */
 
 .panel-right {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 42%;
-  height: 100%;
   background: var(--light);
   color: var(--text-dark);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 3;
-  clip-path: polygon(15% 0, 100% 0, 100% 100%, 0% 100%);
-  padding-left: 5%;
+  padding: 1rem;
+  border-top: 3px solid var(--accent);
+  position: relative;
 }
 
-/* Golden diagonal line along the panel edge */
-.panel-right::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--accent);
-  clip-path: polygon(15% 0, calc(15% + 6px) 0, 6px 100%, 0% 100%);
-  z-index: 5;
-}
+.panel-right::before { display: none; }
 
 /* --- Top Bar --- */
 
@@ -89,8 +70,8 @@ body.dashboard-page {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 2rem;
-  width: 55%;
+  margin-bottom: 0.8rem;
+  width: 100%;
 }
 
 /* --- Icon Buttons (global style) --- */
@@ -123,8 +104,8 @@ body.dashboard-page {
 
 .settings-global {
   position: absolute;
-  top: 1.2rem;
-  right: 1.2rem;
+  top: 0.8rem;
+  right: 0.8rem;
 }
 
 /* --- Weather --- */
@@ -132,14 +113,14 @@ body.dashboard-page {
 .weather {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
 }
 
 .weather-location {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
@@ -151,33 +132,31 @@ body.dashboard-page {
 .weather-condition {
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  margin-top: 0.2rem;
+  gap: 0.5rem;
 }
 
-.weather-icon { font-size: 3.5rem; line-height: 1; }
-.weather-temp { font-size: 3rem; font-weight: 200; }
+.weather-icon { font-size: 2rem; line-height: 1; }
+.weather-temp { font-size: 1.8rem; font-weight: 200; }
 
 /* --- Clock --- */
 
 .clock {
   text-align: center;
-  width: 280px;
 }
 
-.clock__date { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem; }
-.clock__time { font-size: 2.8rem; font-weight: 200; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
+.clock__date { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; }
+.clock__time { font-size: 1.8rem; font-weight: 200; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
 
 
-/* --- Prayer List (cascading diagonal) --- */
+/* --- Prayer List --- */
 
 .prayers-list {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1.2rem;
-  width: 55%;
+  gap: 0.4rem;
+  min-height: 0;
 }
 
 .prayer-item {
@@ -185,28 +164,26 @@ body.dashboard-page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  width: 170px;
-  height: 105px;
+  gap: 0.15rem;
+  padding: 0.3rem 0;
   transition: all 0.3s ease;
 }
 
-/* Cascade: 60% → 50% → 40% → 30% → 20% */
-.prayer-item:nth-child(1) { margin-left: 60%; }
-.prayer-item:nth-child(2) { margin-left: 50%; }
-.prayer-item:nth-child(3) { margin-left: 40%; }
-.prayer-item:nth-child(4) { margin-left: 30%; }
-.prayer-item:nth-child(5) { margin-left: 20%; }
+/* No cascade on mobile */
+.prayer-item:nth-child(1),
+.prayer-item:nth-child(2),
+.prayer-item:nth-child(3),
+.prayer-item:nth-child(4),
+.prayer-item:nth-child(5) { margin-left: 0; }
 
 .prayer-item.past { opacity: 0.3; }
 
 .prayer-item.current {
-  transform: scale(1.08);
-  transform-origin: left center;
+  transform: scale(1.05);
 }
 
 .prayer-name {
-  font-size: 1rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-muted);
 }
@@ -214,11 +191,11 @@ body.dashboard-page {
 .prayer-item.current .prayer-name {
   color: var(--accent);
   font-weight: 600;
-  font-size: 1.15rem;
+  font-size: 0.9rem;
 }
 
 .prayer-time {
-  font-size: 1.6rem;
+  font-size: 1.2rem;
   font-weight: 300;
   font-style: italic;
   color: var(--text-primary);
@@ -226,18 +203,17 @@ body.dashboard-page {
 
 .prayer-item.current .prayer-time {
   color: var(--accent);
-  font-size: 1.85rem;
+  font-size: 1.4rem;
   font-weight: 400;
 }
 
 .prayer-iqama {
-  font-size: 0.8rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.7rem;
+  gap: 0.25rem;
+  font-size: 0.6rem;
   background: var(--iqama-bg);
-  padding: 0.25rem 0.6rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 10px;
   color: var(--text-muted);
   width: fit-content;
@@ -252,63 +228,135 @@ body.dashboard-page {
 
 .next-prayer {
   text-align: center;
-  padding: 0 2rem;
+  padding: 0 1rem;
 }
 
 .next-header {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.1rem;
   background: var(--iqama-bg-light);
-  padding: 0.8rem 1.8rem;
-  border-radius: 12px;
+  padding: 0.4rem 1rem;
+  border-radius: 10px;
   color: var(--text-dark-muted);
-  margin-bottom: 2.5rem;
+  margin-bottom: 0.8rem;
 }
 
 .next-label {
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   font-style: italic;
   font-weight: 400;
 }
 
 .countdown {
-  font-size: 1.3rem;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--text-dark);
 }
 
 .next-arabic {
   font-family: 'Amiri', serif;
-  font-size: 5rem;
+  font-size: 2.5rem;
   font-weight: 700;
   line-height: 1.2;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
   direction: rtl;
 }
 
 .next-time {
-  font-size: 3.5rem;
+  font-size: 2rem;
   font-weight: 300;
   font-style: italic;
   color: var(--accent);
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.4rem;
 }
 
 #next-iqama {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   background: var(--iqama-bg-light);
-  padding: 0.3rem 0.8rem;
-  border-radius: 12px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
   color: var(--text-dark-muted);
 }
 
 #next-iqama .iqm-icon {
   stroke: var(--text-dark-muted);
+}
+
+/* --- Dashboard Desktop --- */
+
+@media (min-width: 769px) {
+  .dashboard {
+    flex-direction: row;
+    position: relative;
+  }
+
+  .panel-left {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    padding: 2rem 3rem;
+    z-index: 1;
+  }
+
+  .panel-right {
+    position: absolute;
+    top: 0; right: 0;
+    width: 42%; height: 100%;
+    z-index: 3;
+    clip-path: polygon(15% 0, 100% 0, 100% 100%, 0% 100%);
+    padding-left: 5%;
+    border-top: none;
+  }
+
+  .panel-right::before {
+    display: block;
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: var(--accent);
+    clip-path: polygon(15% 0, calc(15% + 6px) 0, 6px 100%, 0% 100%);
+    z-index: 5;
+  }
+
+  .top-bar { width: 55%; margin-bottom: 2rem; }
+  .settings-global { top: 1.2rem; right: 1.2rem; }
+
+  .weather-location { font-size: 0.95rem; }
+  .weather-condition { gap: 0.8rem; margin-top: 0.2rem; }
+  .weather-icon { font-size: 3.5rem; }
+  .weather-temp { font-size: 3rem; }
+
+  .clock { width: 280px; }
+  .clock__date { font-size: 0.85rem; margin-bottom: 0.3rem; }
+  .clock__time { font-size: 2.8rem; }
+
+  .prayers-list { gap: 1.2rem; width: 55%; }
+  .prayer-item { width: 170px; height: 105px; gap: 0.25rem; padding: 0; }
+  .prayer-item:nth-child(1) { margin-left: 60%; }
+  .prayer-item:nth-child(2) { margin-left: 50%; }
+  .prayer-item:nth-child(3) { margin-left: 40%; }
+  .prayer-item:nth-child(4) { margin-left: 30%; }
+  .prayer-item:nth-child(5) { margin-left: 20%; }
+  .prayer-item.current { transform: scale(1.08); transform-origin: left center; }
+  .prayer-name { font-size: 1rem; }
+  .prayer-item.current .prayer-name { font-size: 1.15rem; }
+  .prayer-time { font-size: 1.6rem; }
+  .prayer-item.current .prayer-time { font-size: 1.85rem; }
+  .prayer-iqama { font-size: 0.7rem; gap: 0.35rem; padding: 0.25rem 0.6rem; }
+
+  .next-prayer { padding: 0 2rem; }
+  .next-header { padding: 0.8rem 1.8rem; border-radius: 12px; margin-bottom: 2.5rem; }
+  .next-label { font-size: 1.1rem; }
+  .countdown { font-size: 1.3rem; }
+  .next-arabic { font-size: 5rem; margin-bottom: 0.5rem; }
+  .next-time { font-size: 3.5rem; margin-bottom: 0.8rem; }
+  #next-iqama { font-size: 0.85rem; padding: 0.3rem 0.8rem; border-radius: 12px; }
 }
 
 /* ==========================================
@@ -323,18 +371,23 @@ body.dashboard-page {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .card {
   background: white;
   border-radius: 12px;
-  padding: 2.5rem;
+  padding: 1.5rem;
   max-width: 600px;
-  max-height: calc(100vh - 4rem);
+  max-height: calc(100vh - 2rem);
   width: 100%;
   box-shadow: 0 4px 24px rgba(0,0,0,0.06);
   overflow-y: auto;
+}
+
+@media (min-width: 769px) {
+  .page { padding: 2rem; }
+  .card { padding: 2.5rem; max-height: calc(100vh - 4rem); }
 }
 
 .card h1 {
