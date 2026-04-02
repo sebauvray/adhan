@@ -62,10 +62,10 @@ if not prayer_times:
     print("Aucun horaire récupéré. Le crontab ne sera pas modifié.")
     exit(1)
 
-cron_lines = [f"0 4 * * * python3 /app/get_time_salat.py >> /var/log/cron.log \n"]
+cron_lines = [f"0 4 * * * root python3 /app/get_time_salat.py >> /var/log/cron.log 2>&1\n"]
 for name, hour, minute in prayer_times:
-    cron_lines.append(f"# {name} \n")
-    cron_lines.append(f"{minute} {hour} * * * bash {BASH_SCRIPT_PATH} {name} >> /var/log/cron.log \n")
+    cron_lines.append(f"# {name}\n")
+    cron_lines.append(f"{minute} {hour} * * * root bash {BASH_SCRIPT_PATH} {name} >> /var/log/cron.log 2>&1\n")
 cron_lines.append("\n")
 
 os.makedirs(cron_file_path, exist_ok=True)
