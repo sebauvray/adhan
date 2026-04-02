@@ -72,5 +72,6 @@ os.makedirs(cron_file_path, exist_ok=True)
 cron_file_full_path = os.path.join(cron_file_path, cron_file_name)
 with open(cron_file_full_path, 'w') as f:
     f.writelines(cron_lines)
+os.chmod(cron_file_full_path, 0o644)
 
 print(f"Crontab mis à jour : {cron_file_full_path}")
