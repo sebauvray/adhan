@@ -13,9 +13,13 @@ services:
       - adhan-data:/app/data
       - owntone-media:/srv/media
       - cron-data:/etc/cron.d
+      - ./web:/app/web
+      - ./db:/app/db
+      - ./providers:/app/providers
     environment:
       - TZ=${TZ:-Europe/Paris}
       - DB_PATH=/app/data/adhan.db
+    command: uvicorn web.app:app --host 0.0.0.0 --port 8080 --reload
     restart: always
 
   adhan:
