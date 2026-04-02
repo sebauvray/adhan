@@ -352,7 +352,7 @@ async def api_test_prayer(prayer: str):
     if not outputs:
         raise HTTPException(status_code=400, detail=f"Aucune enceinte configurée pour {prayer}")
 
-    volume = get_prayer_volume(prayer, 40)
+    volume = get_prayer_volume(prayer, 30)
     base = f"http://{host}:{port}"
 
     # Get all OwnTone outputs

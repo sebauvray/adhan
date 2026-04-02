@@ -124,7 +124,7 @@ import sys; sys.path.insert(0,'/app')
 from db.schema import init_db; from db.config import get_prayer_volume
 init_db(); print(get_prayer_volume('$PRAYER_NAME', 40))
 ")
-ADHAN_VOLUME=${PRAYER_VOLUME:-${ADHAN_VOLUME:-40}}
+ADHAN_VOLUME=${PRAYER_VOLUME:-${ADHAN_VOLUME:-30}}
 
 log DEBUG "Volume for $PRAYER_NAME: $ADHAN_VOLUME"
 

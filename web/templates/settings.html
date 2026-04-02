@@ -265,11 +265,6 @@
                 </div>
                 <div id="upload-status" style="font-size:0.75rem;margin-top:0.3rem"></div>
               </div>
-              <div class="form-group">
-                <label for="adhan_volume">Volume par défaut</label>
-                <span class="save-indicator" id="save-adhan_volume">Sauvegardé</span>
-                <input type="number" id="adhan_volume" data-table="owntone" data-key="ADHAN_VOLUME" min="0" max="100">
-              </div>
             </div>
             <p style="margin-top:0.5rem;font-size:0.8rem">
               <a id="owntone-link" href="#" target="_blank" class="link-action">
@@ -462,7 +457,7 @@
 
         container.innerHTML = PRAYERS.map(prayer => {
           const selectedIds = (prayerOutputs[prayer] || []).map(o => o.id);
-          const volume = prayerVolumes[prayer] ?? 40;
+          const volume = prayerVolumes[prayer] ?? 30;
           return `
             <div class="prayer-config-card" data-prayer="${prayer}">
               <div class="prayer-config-header">

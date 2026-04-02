@@ -107,7 +107,7 @@ def validate_token(token):
         return False
 
 
-def get_prayer_volume(prayer, default=40):
+def get_prayer_volume(prayer, default=30):
     try:
         conn = _connect()
         cur = conn.execute("SELECT volume FROM prayer_config WHERE prayer = ?", (prayer,))
