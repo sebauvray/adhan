@@ -131,7 +131,7 @@ async function fetchJumua() {
     if (!resp.ok) return;
     const data = await resp.json();
     if (data.times && data.times.length > 0) {
-      document.getElementById('jumua-times').textContent = data.times.join(' / ');
+      document.getElementById('jumua-times').innerHTML = data.times.join(' <span class="jumua-sep">/</span> ');
       footer.style.display = 'block';
     }
   } catch (e) {

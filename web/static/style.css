@@ -92,6 +92,7 @@ body.dashboard-page {
   align-items: center;
   justify-content: center;
   min-height: 0;
+  overflow: hidden;
 }
 
 .dash-next {
@@ -101,6 +102,8 @@ body.dashboard-page {
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* --- Footer (Friday only) --- */
@@ -146,6 +149,10 @@ body.dashboard-page {
   font-size: 0.85rem;
   font-weight: 300;
   color: var(--text-primary);
+}
+
+.jumua-sep {
+  color: var(--text-dark);
 }
 
 /* --- Icon Buttons (global style) --- */
@@ -203,8 +210,8 @@ body.dashboard-page {
   gap: 0.5rem;
 }
 
-.weather-icon { font-size: 2rem; line-height: 1; }
-.weather-temp { font-size: 1.8rem; font-weight: 200; }
+.weather-icon { font-size: clamp(1.5rem, 4vmin, 2rem); line-height: 1; }
+.weather-temp { font-size: clamp(1.2rem, 3.5vmin, 1.8rem); font-weight: 200; }
 
 /* --- Clock --- */
 
@@ -212,8 +219,8 @@ body.dashboard-page {
   text-align: center;
 }
 
-.clock__date { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; }
-.clock__time { font-size: 1.8rem; font-weight: 200; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
+.clock__date { font-size: clamp(0.6rem, 1.3vmin, 0.75rem); color: var(--text-muted); margin-bottom: 0.2rem; }
+.clock__time { font-size: clamp(1.2rem, 3.5vmin, 1.8rem); font-weight: 200; letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
 
 /* --- Prayer List --- */
 
@@ -221,7 +228,8 @@ body.dashboard-page {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.4rem;
+  gap: clamp(0.1rem, 1vh, 0.4rem);
+  max-height: 100%;
 }
 
 .prayer-item {
@@ -229,8 +237,8 @@ body.dashboard-page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 0.3rem 0;
+  gap: 0.1rem;
+  padding: clamp(0.1rem, 0.5vh, 0.3rem) 0;
   transition: all 0.3s ease;
 }
 
@@ -247,7 +255,7 @@ body.dashboard-page {
 }
 
 .prayer-name {
-  font-size: 0.8rem;
+  font-size: clamp(0.6rem, 1.5vmin, 0.8rem);
   font-weight: 500;
   color: var(--text-muted);
 }
@@ -255,11 +263,11 @@ body.dashboard-page {
 .prayer-item.current .prayer-name {
   color: var(--accent);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: clamp(0.7rem, 1.8vmin, 0.9rem);
 }
 
 .prayer-time {
-  font-size: 1.2rem;
+  font-size: clamp(0.9rem, 2.5vmin, 1.2rem);
   font-weight: 300;
   font-style: italic;
   color: var(--text-primary);
@@ -267,17 +275,17 @@ body.dashboard-page {
 
 .prayer-item.current .prayer-time {
   color: var(--accent);
-  font-size: 1.4rem;
+  font-size: clamp(1rem, 3vmin, 1.4rem);
   font-weight: 400;
 }
 
 .prayer-iqama {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  font-size: 0.6rem;
+  gap: 0.2rem;
+  font-size: clamp(0.5rem, 1.2vmin, 0.6rem);
   background: var(--iqama-bg);
-  padding: 0.15rem 0.5rem;
+  padding: 0.1rem 0.4rem;
   border-radius: 10px;
   color: var(--text-muted);
   width: fit-content;
@@ -292,7 +300,7 @@ body.dashboard-page {
 
 .next-prayer {
   text-align: center;
-  padding: 0 1rem;
+  padding: 0 0.5rem;
 }
 
 .next-header {
@@ -301,48 +309,48 @@ body.dashboard-page {
   align-items: center;
   gap: 0.1rem;
   background: var(--iqama-bg-light);
-  padding: 0.4rem 1rem;
+  padding: clamp(0.2rem, 0.5vh, 0.4rem) clamp(0.5rem, 2vw, 1rem);
   border-radius: 10px;
   color: var(--text-dark-muted);
-  margin-bottom: 0.8rem;
+  margin-bottom: clamp(0.3rem, 1.5vh, 0.8rem);
 }
 
 .next-label {
-  font-size: 0.85rem;
+  font-size: clamp(0.65rem, 1.5vmin, 0.85rem);
   font-style: italic;
   font-weight: 400;
 }
 
 .countdown {
-  font-size: 1rem;
+  font-size: clamp(0.8rem, 2vmin, 1rem);
   font-weight: 500;
   color: var(--text-dark);
 }
 
 .next-arabic {
   font-family: 'Amiri', serif;
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 5vmin, 2.5rem);
   font-weight: 700;
   line-height: 1.2;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
   direction: rtl;
 }
 
 .next-time {
-  font-size: 2rem;
+  font-size: clamp(1.2rem, 4vmin, 2rem);
   font-weight: 300;
   font-style: italic;
   color: var(--accent);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.3rem;
 }
 
 #next-iqama {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
+  gap: 0.3rem;
+  font-size: clamp(0.6rem, 1.3vmin, 0.75rem);
   background: var(--iqama-bg-light);
-  padding: 0.2rem 0.6rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 10px;
   color: var(--text-dark-muted);
 }
