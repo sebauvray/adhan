@@ -72,15 +72,15 @@
 
     /* Mobile: stack panels */
     @media (max-width: 768px) {
-      body.settings-page { overflow: auto; }
-      .settings-wrapper { height: auto; min-height: 100vh; }
+      .settings-wrapper { height: 100vh; }
       .settings-header { padding: 1rem 1.5rem 0; }
       .settings-header .logo { height: 50px; }
       .settings-title { padding: 0.8rem 1.5rem; }
-      .settings-panels { flex-direction: column; overflow: visible; }
+      .settings-panels { flex-direction: column; overflow: hidden; }
       .settings-left {
-        flex: none;
+        flex: 1;
         padding: 1rem 1.5rem;
+        overflow-y: auto;
       }
       .settings-right {
         position: relative;
@@ -88,6 +88,7 @@
         clip-path: none;
         padding: 1rem 1.5rem;
         border-top: 3px solid var(--accent);
+        overflow-y: auto;
       }
       .settings-right::before { display: none; }
     }
