@@ -5,184 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Adhan Home - Paramètres</title>
   <link rel="stylesheet" href="/static/style.css">
-  <style>
-    body.settings-page {
-      overflow: hidden;
-      background: var(--light);
-    }
-
-    .settings-wrapper {
-      display: flex;
-      flex-direction: column;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    .settings-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.5rem 3rem 0;
-      background: white;
-    }
-    .settings-header .logo { height: 70px; margin: 0; }
-
-    .settings-title {
-      padding: 1rem 3rem;
-      background: white;
-    }
-    .settings-title h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-    .settings-title .subtitle { font-size: 0.8rem; color: var(--text-dark-muted); }
-
-    .settings-panels {
-      flex: 1;
-      display: flex;
-      position: relative;
-      background: white;
-      overflow: hidden;
-    }
-
-    .settings-left {
-      flex: 0 0 52%;
-      padding: 1.5rem 3rem;
-      overflow-y: auto;
-      z-index: 2;
-    }
-
-    .settings-right {
-      position: absolute;
-      top: 0; right: 0;
-      width: 50%; height: 100%;
-      background: white;
-      z-index: 3;
-      clip-path: polygon(6% 0, 100% 0, 100% 100%, 0% 100%);
-      padding: 1.5rem 2.5rem 1.5rem 5%;
-      overflow-y: auto;
-    }
-    .settings-right::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: var(--accent);
-      clip-path: polygon(6% 0, calc(6% + 4px) 0, 4px 100%, 0% 100%);
-      z-index: 5;
-      pointer-events: none;
-    }
-
-    /* Mobile: stack panels */
-    @media (max-width: 768px) {
-      .settings-wrapper { height: 100vh; }
-      .settings-header { padding: 1rem 1.5rem 0; }
-      .settings-header .logo { height: 50px; }
-      .settings-title { padding: 0.8rem 1.5rem; }
-      .settings-panels { flex-direction: column; overflow: hidden; }
-      .settings-left {
-        flex: 1;
-        padding: 1rem 1.5rem;
-        overflow-y: auto;
-      }
-      .settings-right {
-        position: relative;
-        width: 100%; height: auto;
-        clip-path: none;
-        padding: 1rem 1.5rem;
-        border-top: 3px solid var(--accent);
-        overflow-y: auto;
-      }
-      .settings-right::before { display: none; }
-    }
-
-    /* Auto-save feedback */
-    .form-group { position: relative; }
-
-    .save-indicator {
-      position: absolute;
-      right: 0;
-      top: 0;
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: var(--accent);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .save-indicator.visible { opacity: 1; }
-
-    .form-group input.saved,
-    .form-group select.saved {
-      border-color: var(--accent) !important;
-      transition: border-color 0.3s;
-    }
-
-    /* Prayer cards */
-    .prayer-config-card {
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 8px;
-      padding: 0.8rem;
-      margin-bottom: 0.6rem;
-      transition: border-color 0.3s;
-    }
-    .prayer-config-card.saved { border-color: var(--accent); }
-    .prayer-config-header {
-      display: flex; align-items: center;
-      justify-content: space-between; margin-bottom: 0.5rem;
-    }
-    .prayer-config-name { font-weight: 600; font-size: 0.9rem; }
-    .prayer-test-btn {
-      background: none; border: none; cursor: pointer;
-      color: var(--accent); padding: 0.2rem;
-      transition: color 0.2s; display: inline-flex; align-items: center;
-    }
-    .prayer-test-btn:hover { color: #a68a5b; }
-    .prayer-test-btn.playing { color: #c53030; }
-    .prayer-test-btn.playing:hover { color: #9b2c2c; }
-    .prayer-config-outputs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .output-chip {
-      display: flex; align-items: center; gap: 0.3rem;
-      font-size: 0.75rem; padding: 0.25rem 0.6rem;
-      border-radius: 20px; border: 1px solid rgba(0,0,0,0.1);
-      cursor: pointer; transition: all 0.15s; user-select: none;
-    }
-    .output-chip:hover { border-color: rgba(0,0,0,0.2); }
-    .output-chip.selected { background: var(--accent); color: white; border-color: var(--accent); }
-    .output-chip input { display: none; }
-    .prayer-volume {
-      display: flex; align-items: center; gap: 0.5rem;
-      margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-dark-muted);
-    }
-    .prayer-volume input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; }
-    .prayer-volume-value { min-width: 2rem; text-align: right; font-weight: 600; color: var(--accent); }
-
-    /* Upload */
-    .upload-component { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
-    .upload-file-tag {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      font-size: 0.8rem; background: rgba(0,0,0,0.04);
-      padding: 0.35rem 0.6rem; border-radius: 6px;
-    }
-    .upload-file-tag .filename { color: var(--accent); font-weight: 500; }
-    .upload-file-tag .remove-btn {
-      background: none; border: none; cursor: pointer;
-      font-size: 1.1rem; color: var(--text-dark-muted); line-height: 1; padding: 0;
-    }
-    .upload-file-tag .remove-btn:hover { color: #c53030; }
-  </style>
 </head>
 <body class="settings-page">
-  <div class="settings-wrapper">
+  <div class="settings">
 
     <div class="settings-header">
-      <img src="/static/logo.png" alt="Adhan Home" class="logo">
-      <a href="/dashboard" class="back-link">&larr; Retour au dashboard</a>
+      <div>
+        <img src="/static/logo.png" alt="Adhan Home" class="logo" style="height:80px;margin:0">
+      </div>
+      <div>
+        <h1 style="font-size:1.8rem;font-weight:600">Paramètres</h1>
+        <p style="font-size:0.85rem;color:var(--text-dark-muted)">Sauvegarde automatique</p>
+      </div>
+      <div>
+        <a href="/dashboard" class="link-action">&larr; Dashboard</a>
+      </div>
     </div>
 
-    <div class="settings-title">
-      <h1>Paramètres</h1>
-      <p class="subtitle">Les modifications sont sauvegardées automatiquement</p>
-    </div>
-
-    <div class="settings-panels">
-
+    <div class="settings-content">
       <div class="settings-left">
         <div class="form-section">
           <h2>Mosquée</h2>
@@ -301,8 +141,8 @@
           </div>
         </div>
       </div>
-
     </div>
+
   </div>
 
   <script src="/static/app.js"></script>
@@ -312,12 +152,9 @@
     const API_CONFIG_FIELD = '/api/config-field';
 
     function showSaved(inputEl) {
-      // Gold border
       inputEl.classList.add('saved');
-      // "Sauvegardé" indicator
       const indicator = document.getElementById('save-' + inputEl.id);
       if (indicator) indicator.classList.add('visible');
-      // Clear after 2s
       setTimeout(() => {
         inputEl.classList.remove('saved');
         if (indicator) indicator.classList.remove('visible');
@@ -384,7 +221,6 @@
             showSaved(el);
           }
         });
-        // Select: also save on change
         if (el.tagName === 'SELECT') {
           el.addEventListener('change', async () => {
             await saveField(el.dataset.table, el.dataset.key, el.value);
@@ -504,7 +340,7 @@
             </div>`;
         }).join('');
 
-        // Chip click → auto-save
+        // Chip click -> auto-save
         container.querySelectorAll('.output-chip').forEach(chip => {
           chip.addEventListener('click', async () => {
             const cb = chip.querySelector('input');
@@ -516,7 +352,7 @@
           });
         });
 
-        // Volume change → auto-save
+        // Volume change -> auto-save
         container.querySelectorAll('.prayer-volume input[type="range"]').forEach(slider => {
           slider.addEventListener('change', async () => {
             const card = slider.closest('.prayer-config-card');

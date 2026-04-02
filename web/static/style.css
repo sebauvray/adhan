@@ -412,7 +412,141 @@ body.dashboard-page {
 }
 
 /* ==========================================
-   SETUP & SETTINGS PAGES
+   SETTINGS PAGE
+   ========================================== */
+
+body.settings-page {
+  overflow: hidden;
+}
+
+.settings {
+  width: 100vw;
+  height: 100vh;
+  background: white;
+  color: var(--text-dark);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+
+.settings-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.2rem;
+  position: relative;
+  z-index: 2;
+}
+
+.settings-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.settings-left {
+  flex: 4;
+  padding: 1rem 1.2rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.settings-right {
+  flex: 6;
+  padding: 1rem 1.2rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Auto-save feedback */
+.settings .form-group { position: relative; }
+
+.save-indicator {
+  position: absolute;
+  right: 0; top: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.save-indicator.visible { opacity: 1; }
+
+.settings .form-group input.saved,
+.settings .form-group select.saved {
+  border-color: var(--accent) !important;
+  transition: border-color 0.3s;
+}
+
+/* Prayer config cards */
+.prayer-config-card {
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 8px;
+  padding: 0.8rem;
+  margin-bottom: 0.6rem;
+  transition: border-color 0.3s;
+}
+.prayer-config-card.saved { border-color: var(--accent); }
+.prayer-config-header {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 0.5rem;
+}
+.prayer-config-name { font-weight: 600; font-size: 0.9rem; }
+.prayer-test-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--accent); padding: 0.2rem;
+  transition: color 0.2s; display: inline-flex; align-items: center;
+}
+.prayer-test-btn:hover { color: #a68a5b; }
+.prayer-test-btn.playing { color: #c53030; }
+.prayer-test-btn.playing:hover { color: #9b2c2c; }
+.prayer-config-outputs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.output-chip {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.75rem; padding: 0.25rem 0.6rem;
+  border-radius: 20px; border: 1px solid rgba(0,0,0,0.1);
+  cursor: pointer; transition: all 0.15s; user-select: none;
+}
+.output-chip:hover { border-color: rgba(0,0,0,0.2); }
+.output-chip.selected { background: var(--accent); color: white; border-color: var(--accent); }
+.output-chip input { display: none; }
+.prayer-volume {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-dark-muted);
+}
+.prayer-volume input[type="range"] { flex: 1; accent-color: var(--accent); height: 4px; }
+.prayer-volume-value { min-width: 2rem; text-align: right; font-weight: 600; color: var(--accent); }
+
+/* Upload */
+.upload-component { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
+.upload-file-tag {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8rem; background: rgba(0,0,0,0.04);
+  padding: 0.35rem 0.6rem; border-radius: 6px;
+}
+.upload-file-tag .filename { color: var(--accent); font-weight: 500; }
+.upload-file-tag .remove-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 1.1rem; color: var(--text-dark-muted); line-height: 1; padding: 0;
+}
+.upload-file-tag .remove-btn:hover { color: #c53030; }
+
+/* Settings Desktop */
+@media (min-width: 769px) {
+  .settings-header { padding: 1.5rem 3rem; }
+  .settings-content { flex-direction: row; }
+  .settings-left { padding: 1.5rem 3rem; }
+  .settings-right { padding: 1.5rem 2.5rem; }
+}
+
+/* ==========================================
+   SETUP PAGE
    ========================================== */
 
 .page {
