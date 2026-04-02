@@ -40,24 +40,22 @@ body.dashboard-page {
   position: relative;
 }
 
-/* Diagonal background panel (beige + golden line) — aligned with 60/40 content split */
+/* Background panel (beige + golden line) — mobile: horizontal, desktop: diagonal */
 .dashboard::before {
   content: '';
   position: absolute;
-  top: 0; right: 0;
-  width: 45%; height: 100%;
+  bottom: 0; left: 0; right: 0;
+  height: 30%;
   background: var(--light);
-  clip-path: polygon(22% 0, 100% 0, 100% 100%, 0% 100%);
   z-index: 0;
 }
 
 .dashboard::after {
   content: '';
   position: absolute;
-  top: 0; right: 0;
-  width: 45%; height: 100%;
+  bottom: 30%; left: 0; right: 0;
+  height: 3px;
   background: var(--accent);
-  clip-path: polygon(22% 0, calc(22% + 6px) 0, 6px 100%, 0% 100%);
   z-index: 1;
 }
 
@@ -114,12 +112,12 @@ body.dashboard-page {
   z-index: 2;
 }
 
+/* Mobile: footer on beige (right panel) → use dark/left style */
 .jumua-info {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  background: rgba(200, 169, 126, 0.15);
-  backdrop-filter: blur(8px);
+  background: var(--dark);
   padding: 0.5rem 1rem;
   border-radius: 10px;
   width: fit-content;
@@ -356,6 +354,18 @@ body.dashboard-page {
 /* --- Dashboard Desktop --- */
 
 @media (min-width: 769px) {
+  .dashboard::before {
+    top: 0; bottom: 0; left: auto; right: 0;
+    width: 45%; height: 100%;
+    clip-path: polygon(22% 0, 100% 0, 100% 100%, 0% 100%);
+  }
+
+  .dashboard::after {
+    top: 0; bottom: auto; left: auto; right: 0;
+    width: 45%; height: 100%;
+    clip-path: polygon(22% 0, calc(22% + 6px) 0, 6px 100%, 0% 100%);
+  }
+
   .dash-header {
     padding: 2rem 3rem;
   }
@@ -406,9 +416,10 @@ body.dashboard-page {
   #next-iqama { font-size: 0.85rem; padding: 0.3rem 0.8rem; border-radius: 12px; }
 
   .dash-footer { padding: 1.5rem 3rem; }
-  .jumua-info { padding: 0.6rem 1.2rem; }
-  .jumua-label { font-size: 0.75rem; }
-  .jumua-times { font-size: 1rem; }
+  .jumua-info { padding: 0.6rem 1.2rem; background: var(--light); }
+  .jumua-icon { stroke: var(--text-dark); stroke-width: 2; }
+  .jumua-label { font-size: 0.75rem; color: var(--text-dark); font-weight: 700; }
+  .jumua-times { font-size: 1rem; color: var(--accent); font-weight: 500; }
 }
 
 /* ==========================================
