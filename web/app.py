@@ -18,7 +18,8 @@ from db.config import (
     get_value, set_value, get_all, get_homepods, set_homepods,
     is_configured, get_token, create_token, validate_token,
     get_prayer_outputs, set_prayer_outputs,
-    get_all_prayer_volumes, set_prayer_volume
+    get_all_prayer_volumes, set_prayer_volume,
+    get_prayer_times_for_date
 )
 from providers.mawaqit_http_provider import get_full_data
 
@@ -37,20 +38,6 @@ ARABIC = {
     'Maghrib': 'المغرب',
     'Isha': 'العشاء',
 }
-
-# --- Cache simple en mémoire (1h) ---
-
-_cache = {}
-
-
-def _get_cached(url):
-    now = datetime.now()
-    key = f"{url}:{now.strftime('%Y-%m-%d-%H')}"
-    if key not in _cache:
-        _cache.clear()
-        _cache[key] = get_full_data(url)
-    return _cache[key]
-
 
 # --- Events ---
 
@@ -96,18 +83,27 @@ async def api_status():
 
 @app.get("/api/prayers")
 async def api_prayers():
-    mosque_url = get_value('config', 'MOSQUE_URL')
-    if not mosque_url:
+    if not is_configured():
         raise HTTPException(status_code=503, detail="Non configuré")
-
-    try:
-        data = _get_cached(mosque_url)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
 
     now = datetime.now()
     current_time = now.time()
-    prayers_list = data['prayers']
+
+    # Read today's prayers from SQLite
+    prayers_list = get_prayer_times_for_date(now.strftime('%Y-%m-%d'))
+
+    # After Isha, show tomorrow's prayers
+    if prayers_list:
+        last_prayer = prayers_list[-1]
+        lh, lm = map(int, last_prayer['adhan'].split(':'))
+        if current_time > dtime(lh, lm):
+            tomorrow = (now + timedelta(days=1)).strftime('%Y-%m-%d')
+            tomorrow_prayers = get_prayer_times_for_date(tomorrow)
+            if tomorrow_prayers:
+                prayers_list = tomorrow_prayers
+
+    if not prayers_list:
+        raise HTTPException(status_code=503, detail="Horaires non disponibles")
 
     # Déterminer le statut de chaque prière
     last_passed_idx = -1
@@ -226,9 +222,6 @@ async def _save_config(data: ConfigPayload):
     if data.homepods:
         set_homepods(data.homepods)
 
-    # Vider le cache pour forcer le refresh
-    _cache.clear()
-
 
 @app.post("/api/setup")
 async def api_setup(data: ConfigPayload):
@@ -312,7 +305,6 @@ async def api_config_field(payload: dict):
             set_value('config', 'LAT', str(data.get('lat', '')))
             set_value('config', 'LNG', str(data.get('lng', '')))
             set_value('config', 'CITY', data.get('city', ''))
-            _cache.clear()
         except Exception:
             pass
 

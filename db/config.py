@@ -189,3 +189,53 @@ def get_outputs_for_prayer(prayer):
         return names
     except Exception:
         return []
+
+
+def save_prayer_times(date_str, prayers):
+    """Save prayer times for a date. prayers = [{name, adhan, iqama}, ...]."""
+    conn = _connect()
+    for p in prayers:
+        conn.execute(
+            "INSERT OR REPLACE INTO prayer_times (date, prayer, adhan, iqama) VALUES (?, ?, ?, ?)",
+            (date_str, p['name'], p['adhan'], p['iqama'])
+        )
+    conn.commit()
+    conn.close()
+
+
+def get_prayer_times_for_date(date_str):
+    """Get prayer times for a date. Returns [{name, adhan, iqama}, ...] ordered by adhan."""
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT prayer, adhan, iqama FROM prayer_times WHERE date = ? ORDER BY adhan",
+            (date_str,)
+        )
+        rows = [{'name': r[0], 'adhan': r[1], 'iqama': r[2]} for r in cur.fetchall()]
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
+def has_prayer_times(date_str):
+    """Check if prayer times exist for a date."""
+    try:
+        conn = _connect()
+        cur = conn.execute("SELECT COUNT(*) FROM prayer_times WHERE date = ?", (date_str,))
+        count = cur.fetchone()[0]
+        conn.close()
+        return count > 0
+    except Exception:
+        return False
+
+
+def cleanup_old_prayer_times():
+    """Delete prayer times older than 7 days."""
+    try:
+        conn = _connect()
+        conn.execute("DELETE FROM prayer_times WHERE date < date('now', '-7 days')")
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass

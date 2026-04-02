@@ -35,6 +35,14 @@ CREATE TABLE IF NOT EXISTS prayer_outputs (
     PRIMARY KEY (prayer, output_id)
 );
 
+CREATE TABLE IF NOT EXISTS prayer_times (
+    date    TEXT NOT NULL,
+    prayer  TEXT NOT NULL,
+    adhan   TEXT NOT NULL,
+    iqama   TEXT NOT NULL,
+    PRIMARY KEY (date, prayer)
+);
+
 CREATE TABLE IF NOT EXISTS api_tokens (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     token       TEXT    UNIQUE NOT NULL,
