@@ -126,6 +126,37 @@ init_db(); print(get_prayer_volume('$PRAYER_NAME', 40))
 ")
 ADHAN_VOLUME=${PRAYER_VOLUME:-${ADHAN_VOLUME:-30}}
 
+# Quiet hours: cap volume if current time is within quiet range
+QUIET_CONFIG=$(python3 -c "
+import sys; sys.path.insert(0,'/app')
+from db.schema import init_db; from db.config import get_value
+init_db()
+print(get_value('config','QUIET_START','21:00'))
+print(get_value('config','QUIET_END','07:00'))
+print(get_value('config','QUIET_VOLUME','10'))
+")
+QUIET_START=$(echo "$QUIET_CONFIG" | sed -n '1p')
+QUIET_END=$(echo "$QUIET_CONFIG" | sed -n '2p')
+QUIET_VOLUME=$(echo "$QUIET_CONFIG" | sed -n '3p')
+
+NOW_MINUTES=$(( $(date +%H) * 60 + $(date +%M) ))
+QS_MINUTES=$(( ${QUIET_START%%:*} * 60 + ${QUIET_START##*:} ))
+QE_MINUTES=$(( ${QUIET_END%%:*} * 60 + ${QUIET_END##*:} ))
+
+IN_QUIET=false
+if [[ $QS_MINUTES -gt $QE_MINUTES ]]; then
+  # Overnight range (e.g. 21:00 → 07:00)
+  [[ $NOW_MINUTES -ge $QS_MINUTES || $NOW_MINUTES -lt $QE_MINUTES ]] && IN_QUIET=true
+else
+  # Same-day range (e.g. 14:00 → 16:00)
+  [[ $NOW_MINUTES -ge $QS_MINUTES && $NOW_MINUTES -lt $QE_MINUTES ]] && IN_QUIET=true
+fi
+
+if [[ "$IN_QUIET" == "true" && "$ADHAN_VOLUME" -gt "$QUIET_VOLUME" ]]; then
+  log INFO "Quiet hours active ($QUIET_START-$QUIET_END): volume capped from $ADHAN_VOLUME to $QUIET_VOLUME"
+  ADHAN_VOLUME=$QUIET_VOLUME
+fi
+
 log DEBUG "Volume for $PRAYER_NAME: $ADHAN_VOLUME"
 
 OUTPUTS_JSON=$(curl -s "http://${OWNTONE_HOST}:${OWNTONE_PORT}/api/outputs")

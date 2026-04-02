@@ -222,6 +222,25 @@
                 <input type="text" id="owntone_port" data-table="owntone" data-key="PORT">
               </div>
             </div>
+            <div class="form-row" style="margin-top:0.5rem">
+              <div class="form-group">
+                <label for="quiet_start">Heures calmes — début</label>
+                <span class="save-indicator" id="save-quiet_start">Sauvegardé</span>
+                <input type="time" id="quiet_start" data-table="config" data-key="QUIET_START">
+              </div>
+              <div class="form-group">
+                <label for="quiet_end">Heures calmes — fin</label>
+                <span class="save-indicator" id="save-quiet_end">Sauvegardé</span>
+                <input type="time" id="quiet_end" data-table="config" data-key="QUIET_END">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="quiet_volume">Volume max (heures calmes)</label>
+                <span class="save-indicator" id="save-quiet_volume">Sauvegardé</span>
+                <input type="number" id="quiet_volume" data-table="config" data-key="QUIET_VOLUME" min="0" max="100">
+              </div>
+            </div>
           </div>
         </details>
 
@@ -330,7 +349,9 @@
           'log_level': data.log_level,
           'owntone_host': data.owntone_host,
           'owntone_port': data.owntone_port,
-          'adhan_volume': data.adhan_volume,
+          'quiet_start': data.quiet_start,
+          'quiet_end': data.quiet_end,
+          'quiet_volume': data.quiet_volume,
         };
         Object.entries(map).forEach(([id, val]) => {
           const el = document.getElementById(id);

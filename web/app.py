@@ -211,6 +211,9 @@ async def api_get_config():
         "owntone_port": get_value('owntone', 'PORT', '3689'),
         "adhan_file": get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3'),
         "adhan_volume": get_value('owntone', 'ADHAN_VOLUME', '40'),
+        "quiet_start": get_value('config', 'QUIET_START', '21:00'),
+        "quiet_end": get_value('config', 'QUIET_END', '07:00'),
+        "quiet_volume": get_value('config', 'QUIET_VOLUME', '10'),
         "homepods": get_homepods(),
     }
 

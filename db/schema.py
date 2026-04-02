@@ -121,6 +121,9 @@ def _ensure_defaults(conn):
         },
         'config': {
             'LOG_LEVEL': 'INFO',
+            'QUIET_START': '21:00',
+            'QUIET_END': '07:00',
+            'QUIET_VOLUME': '10',
         },
     }
     for table, values in defaults.items():
