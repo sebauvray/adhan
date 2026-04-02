@@ -6,18 +6,19 @@ A home automation system that plays the Islamic call to prayer (Adhan) on HomePo
 
 ```
 mawaqit.net
-     │ HTTP fetch (daily 4 AM)
+     │ HTTP fetch (after Isha)
      ▼
-Prayer times → crontab
-                  │ cron fires at each prayer
-                  ▼
-             adhan.sh → OwnTone → HomePods
+Prayer times → SQLite → crontab (next day)
+                           │ cron fires at each prayer
+                           ▼
+                      adhan.sh → OwnTone → HomePods
 ```
 
-1. **Daily fetch** — At 4:00 AM, prayer times are retrieved from mawaqit.net for your mosque.
-2. **Dynamic scheduling** — Times are written as cron entries.
-3. **Smart playback** — At prayer time, OwnTone streams the Adhan over AirPlay to selected HomePods.
-4. **Context-aware** — Device selection and volume adapt to the time of day.
+1. **Daily fetch** — After Isha, prayer times for the next day are retrieved from mawaqit.net.
+2. **SQLite storage** — Adhan and iqama times are stored in the database (single source of truth).
+3. **Dynamic scheduling** — The crontab is rewritten with tomorrow's prayer times.
+4. **Smart playback** — At prayer time, OwnTone streams the Adhan over AirPlay to configured speakers.
+5. **Per-prayer config** — Each prayer has its own speakers and volume.
 
 ## Quick Start
 
@@ -36,26 +37,25 @@ Open **http://localhost:8080** — the setup wizard guides you through configura
 |----------|-------------|
 | `make up` | Build et démarre tous les containers |
 | `make down` | Arrête les containers (conserve les données) |
-| `make clean` | Supprime tout : containers, volumes, images et base SQLite (fresh install) |
+| `make clean` | Supprime tout : containers, volumes, images (fresh install) |
 | `make help` | Affiche les commandes disponibles |
 
 ## Web Interface
 
 ### Dashboard
-- Real-time clock and date
+- Header: weather widget + real-time clock + settings
 - All 5 prayers with adhan and iqama times
-- Current prayer highlighted (golden, larger)
-- Next prayer countdown with Arabic name
-- Weather widget (Open-Meteo, no API key needed)
+- Current prayer highlighted, next prayer countdown with Arabic name
+- Diagonal split design (dark/light)
+- Friday footer with Jumu'a prayer times
 
 ### Setup Wizard
 On first launch, the UI asks for:
 - **Mosque URL** — your mosque's mawaqit.net page (validated live with prayer preview)
-- **OwnTone** — host, port, audio file, volume
-- **Time periods** — morning/afternoon/evening ranges
+- **Sound alerts** — enable/disable, custom audio file upload
 
 ### Settings
-All configuration is editable via the gear icon (top right of dashboard). Changes are saved to SQLite and the crontab is regenerated automatically.
+All configuration is editable via the gear icon on the dashboard. Changes are saved to SQLite and the crontab is regenerated automatically.
 
 ## Architecture
 
@@ -77,11 +77,11 @@ adhan/
 │   ├── dockerfile          # Adhan container
 │   └── requirements.txt
 ├── adhan.sh                # Cron script: volume + play on HomePods
-├── get_time_salat.py       # Router: provider → crontab
-├── next_salat.py           # Next prayer reporter
+├── get_time_salat.py       # Fetch → SQLite → crontab
 ├── load_config.py          # SQLite → shell env bridge
-├── get_homepods.py         # SQLite → HomePod list for a period
+├── get_homepods.py         # SQLite → speaker list for a prayer
 ├── docker-compose.yml
+├── Makefile
 └── .env_example
 ```
 
@@ -89,18 +89,11 @@ adhan/
 
 | Component | Source | Storage |
 |-----------|--------|---------|
-| App config (mosque URL, HA, OwnTone...) | Web UI | SQLite (`data/adhan.db`) |
-| Docker/infra config (TZ, ports, versions) | `.env` | File |
-| Prayer schedule | mawaqit.net | `/etc/cron.d/salat.crontab` |
-| HomePod config | Web UI (migrated from `HomePod.json`) | SQLite |
-
-## Fetching Modes
-
-| Mode | `AUTONOMOUS` | Method | Image size | Raspberry Pi |
-|------|-------------|--------|-----------|-------------|
-| Mawaqit HTTP | `false` (default) | HTTP + regex | ~80 MB | Recommended |
-| Mawaqit Selenium | `true` | Firefox headless | ~500 MB | Heavy |
-| Custom (concept) | — | Selenium + custom XPath | ~500 MB | Heavy |
+| App config (mosque URL, OwnTone...) | Web UI | SQLite (`adhan-data` volume) |
+| Prayer times (adhan + iqama) | mawaqit.net | SQLite `prayer_times` table |
+| Docker/infra config (TZ, ports) | `.env` | File |
+| Prayer schedule | SQLite | `/etc/cron.d/salat.crontab` |
+| Speaker config per prayer | Web UI | SQLite `prayer_outputs` table |
 
 ## Docker Services
 
@@ -125,21 +118,21 @@ Override in `.env` without touching Dockerfiles:
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/api/prayers` | — | Prayer times + statuses + next prayer |
+| `GET` | `/api/status` | — | Check if configured |
+| `GET` | `/api/prayers` | — | Prayer times + statuses + next prayer countdown |
+| `GET` | `/api/next-prayer` | — | Next prayer name, time, countdown |
+| `GET` | `/api/jumua` | — | Friday prayer times |
 | `GET` | `/api/weather` | — | Weather for mosque location |
 | `GET` | `/api/config` | — | Current configuration |
+| `GET` | `/api/outputs` | — | Available AirPlay speakers |
+| `GET` | `/api/prayer-outputs` | — | Speaker config per prayer |
 | `POST` | `/api/setup` | — | Initial setup (returns API token) |
-| `POST` | `/api/config` | Bearer token | Update configuration |
-| `POST` | `/api/refresh` | Bearer token | Force prayer time re-fetch |
+| `POST` | `/api/config` | Bearer | Update configuration |
+| `POST` | `/api/config-field` | — | Update a single config field |
+| `POST` | `/api/refresh` | Bearer | Force prayer time re-fetch |
 | `POST` | `/api/validate-url` | — | Validate a mawaqit.net URL |
-
-## Next Prayer
-
-```bash
-docker compose exec adhan python3 /app/next_salat.py
-# La prochaine prière Fadjer aura lieu à 05:42
-```
-
-## Home Assistant
-
-La logique d'intégration Home Assistant a été archivée dans `_archive/home_assistant.py`. Le script permettait de déclencher des appels API vers Home Assistant (turn_on/turn_off d'entités). Cette fonctionnalité est en attente de réflexion sur le cas d'usage exact avant d'être réintégrée dans le projet.
+| `POST` | `/api/prayer-outputs` | — | Save speaker config per prayer |
+| `POST` | `/api/test-prayer/{prayer}` | — | Test adhan on configured speakers |
+| `POST` | `/api/stop-playback` | — | Stop OwnTone playback |
+| `POST` | `/api/upload-adhan` | — | Upload custom audio file |
+| `DELETE` | `/api/upload-adhan` | — | Delete custom audio file |

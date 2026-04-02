@@ -280,13 +280,10 @@ async function loadConfig() {
 function updateOwntoneLink() {
   const portInput = document.getElementById('owntone_port');
   const link = document.getElementById('owntone-link');
-  const wrapper = document.getElementById('owntone-link-wrapper');
-  if (!link || !wrapper) return;
+  if (!link) return;
 
-  // OwnTone uses host networking — always reachable on localhost from the browser
   const port = (portInput && portInput.value.trim()) || '3689';
   link.href = `http://${window.location.hostname}:${port}`;
-  wrapper.style.display = 'block';
 }
 
 async function submitSettings(event) {
