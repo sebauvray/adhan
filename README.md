@@ -25,10 +25,19 @@ Prayer times → crontab
 git clone <repo-url>
 cd adhan
 cp .env_example .env
-docker compose up -d
+make up
 ```
 
 Open **http://localhost:8080** — the setup wizard guides you through configuration.
+
+## Commandes Make
+
+| Commande | Description |
+|----------|-------------|
+| `make up` | Build et démarre tous les containers |
+| `make down` | Arrête les containers (conserve les données) |
+| `make clean` | Supprime tout : containers, volumes, images et base SQLite (fresh install) |
+| `make help` | Affiche les commandes disponibles |
 
 ## Web Interface
 

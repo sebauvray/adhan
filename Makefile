@@ -1,4 +1,14 @@
-.PHONY: up down clean
+.PHONY: help up down clean
+
+## Afficher l'aide
+help:
+	@echo "Usage: make <commande>"
+	@echo ""
+	@echo "Commandes disponibles :"
+	@echo "  up      Démarrer le projet (build + lancement)"
+	@echo "  down    Arrêter le projet"
+	@echo "  clean   Tout supprimer (volumes, images, base de données)"
+	@echo "  help    Afficher cette aide"
 
 ## Démarrer le projet
 up:
