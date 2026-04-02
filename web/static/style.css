@@ -40,14 +40,14 @@ body.dashboard-page {
   position: relative;
 }
 
-/* Diagonal background panel (beige + golden line) */
+/* Diagonal background panel (beige + golden line) — aligned with 60/40 content split */
 .dashboard::before {
   content: '';
   position: absolute;
   top: 0; right: 0;
-  width: 42%; height: 100%;
+  width: 45%; height: 100%;
   background: var(--light);
-  clip-path: polygon(15% 0, 100% 0, 100% 100%, 0% 100%);
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 0% 100%);
   z-index: 0;
 }
 
@@ -55,9 +55,9 @@ body.dashboard-page {
   content: '';
   position: absolute;
   top: 0; right: 0;
-  width: 42%; height: 100%;
+  width: 45%; height: 100%;
   background: var(--accent);
-  clip-path: polygon(15% 0, calc(15% + 6px) 0, 6px 100%, 0% 100%);
+  clip-path: polygon(22% 0, calc(22% + 6px) 0, 6px 100%, 0% 100%);
   z-index: 1;
 }
 
