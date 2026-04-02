@@ -18,7 +18,6 @@ up:
 down:
 	docker compose down
 
-## Supprimer totalement le projet (volumes, images, données locales)
+## Supprimer totalement le projet (volumes, images, données)
 clean:
 	docker compose down -v --rmi all
-	rm -rf data/adhan.db

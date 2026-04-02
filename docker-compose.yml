@@ -10,7 +10,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./data:/app/data
+      - adhan-data:/app/data
       - owntone-media:/srv/media
       - cron-data:/etc/cron.d
     environment:
@@ -30,7 +30,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - ./data:/app/data
+      - adhan-data:/app/data
       - cron-data:/etc/cron.d
     environment:
       - TZ=${TZ:-Europe/Paris}
@@ -57,6 +57,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  adhan-data:
   cron-data:
   owntone-etc:
   owntone-media:
