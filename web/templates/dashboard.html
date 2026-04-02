@@ -9,49 +9,65 @@
 </head>
 <body class="dashboard-page">
   <div class="dashboard">
-    <div class="panel-left">
-      <div class="top-bar">
-        <div class="weather" id="weather">
-          <!-- Location: pin icon + city name -->
-          <div class="weather-location">
-            <svg class="weather-pin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-              <circle cx="12" cy="10" r="3"/>
-            </svg>
-            <span id="weather-city"></span>
-          </div>
-          <!-- Condition: weather image + temperature -->
-          <div class="weather-condition">
-            <span class="weather-icon" id="weather-icon"></span>
-            <span class="weather-temp" id="weather-temp"></span>
-          </div>
+
+    <div class="dash-header">
+      <div class="weather" id="weather">
+        <div class="weather-location">
+          <svg class="weather-pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span id="weather-city"></span>
         </div>
-        <div class="clock">
-          <div class="clock__date" id="clock-date"></div>
-          <div class="clock__time" id="clock-time"></div>
+        <div class="weather-condition">
+          <span class="weather-icon" id="weather-icon"></span>
+          <span class="weather-temp" id="weather-temp"></span>
         </div>
       </div>
+      <div class="clock">
+        <div class="clock__date" id="clock-date"></div>
+        <div class="clock__time" id="clock-time"></div>
+      </div>
+      <div>
+        <a href="/settings" class="icon-btn settings-btn" title="Paramètres">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </a>
+      </div>
+   </div>
 
-      <div class="prayers-list" id="prayers-list"></div>
+    <div class="dash-content">
+      <div class="dash-prayers">
+        <div class="prayers-list" id="prayers-list"></div>
+      </div>
+      <div class="dash-next">
+        <div class="next-prayer" id="next-prayer">
+          <div class="next-header">
+            <div class="next-label">Prochaine Prière</div>
+            <div class="countdown" id="countdown"></div>
+          </div>
+          <div class="next-arabic" id="next-arabic"></div>
+          <div class="next-time" id="next-time"></div>
+          <div id="next-iqama"></div>
+        </div>
+      </div>
     </div>
 
-    <div class="panel-right">
-      <a href="/settings" class="icon-btn icon-btn--light settings-global" title="Paramètres">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-          <circle cx="12" cy="12" r="3"/>
+    <div class="dash-footer" id="dash-footer" style="display:none">
+      <div class="jumua-info">
+        <svg class="jumua-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2C10.34 2 9 3.34 9 5s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+          <path d="M12 10c-1.1 0-2 .45-2 1v3l-2 6h2l1-3h2l1 3h2l-2-6v-3c0-.55-.9-1-2-1z"/>
         </svg>
-      </a>
-      <div class="next-prayer" id="next-prayer">
-        <div class="next-header">
-          <div class="next-label">Prochaine Prière</div>
-          <div class="countdown" id="countdown"></div>
+        <div class="jumua-details">
+          <span class="jumua-label">Jumu'a</span>
+          <span class="jumua-times" id="jumua-times"></span>
         </div>
-        <div class="next-arabic" id="next-arabic"></div>
-        <div class="next-time" id="next-time"></div>
-        <div id="next-iqama"></div>
       </div>
     </div>
+
   </div>
 
   <script src="/static/app.js"></script>

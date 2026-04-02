@@ -166,6 +166,14 @@ async def api_next_prayer():
     }
 
 
+@app.get("/api/jumua")
+async def api_jumua():
+    jumua_str = get_value('config', 'JUMUA', '')
+    if not jumua_str:
+        return {"times": []}
+    return {"times": jumua_str.split(',')}
+
+
 @app.get("/api/weather")
 async def api_weather():
     lat = get_value('config', 'LAT')

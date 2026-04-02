@@ -117,6 +117,28 @@ async function fetchWeather() {
   }
 }
 
+/* --- Jumua (Friday) --- */
+
+async function fetchJumua() {
+  const footer = document.getElementById('dash-footer');
+  if (!footer) return;
+
+  const isFriday = new Date().getDay() === 5;
+  if (!isFriday) { footer.style.display = 'none'; return; }
+
+  try {
+    const resp = await fetch('/api/jumua');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.times && data.times.length > 0) {
+      document.getElementById('jumua-times').textContent = data.times.join(' / ');
+      footer.style.display = 'block';
+    }
+  } catch (e) {
+    console.error('Erreur fetch jumua:', e);
+  }
+}
+
 /* --- Init Dashboard --- */
 
 function initDashboard() {
@@ -131,6 +153,8 @@ function initDashboard() {
 
   fetchWeather();
   setInterval(fetchWeather, 1800000);
+
+  fetchJumua();
 }
 
 /* === Setup Page JavaScript === */

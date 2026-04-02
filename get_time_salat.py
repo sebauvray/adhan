@@ -56,13 +56,15 @@ def fetch_and_store(target_date):
     data = get_full_data_for_date(mosque_url, target_date)
     save_prayer_times(target_date.strftime('%Y-%m-%d'), data['prayers'])
 
-    # Update city/coords if available
+    # Update city/coords/jumua if available
     if data.get('lat'):
         set_value('config', 'LAT', str(data['lat']))
     if data.get('lng'):
         set_value('config', 'LNG', str(data['lng']))
     if data.get('city'):
         set_value('config', 'CITY', data['city'])
+    if data.get('jumua'):
+        set_value('config', 'JUMUA', ','.join(data['jumua']))
 
     print(f"Horaires stockés pour le {target_date.strftime('%Y-%m-%d')} : "
           f"{[p['adhan'] for p in data['prayers']]}")

@@ -230,6 +230,8 @@ def get_full_data_for_date(url, target_date):
     raw_name = conf.get('name', '')
     city = raw_name.split(' - ')[-1].strip() if ' - ' in raw_name else raw_name
 
+    jumua = [j for j in [conf.get('jumua'), conf.get('jumua2'), conf.get('jumua3')] if j]
+
     return {
         'prayers': prayers,
         'city': city,
@@ -237,4 +239,5 @@ def get_full_data_for_date(url, target_date):
         'lat': conf.get('latitude', conf.get('lat')),
         'lng': conf.get('longitude', conf.get('lng')),
         'slug': slug,
+        'jumua': jumua,
     }
