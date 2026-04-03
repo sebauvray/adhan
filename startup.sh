@@ -4,6 +4,9 @@
 env > /etc/environment
 chmod 600 /etc/environment
 
+# Ensure log file exists
+touch /var/log/cron.log
+
 # Fetch prayer times
 python3 /app/get_time_salat.py
 
