@@ -7,8 +7,5 @@ chmod 600 /etc/environment
 # Fetch prayer times
 python3 /app/get_time_salat.py
 
-# Start cron daemon
-cron
-
-# Keep container alive and stream logs
-tail -f /var/log/cron.log
+# Start cron in foreground (keeps container alive)
+exec cron -f
