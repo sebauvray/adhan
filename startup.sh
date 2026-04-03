@@ -1,13 +1,14 @@
 #!/bin/bash
 
-#Export all env variable
+# Export all env variables for cron
 env > /etc/environment
 chmod 600 /etc/environment
 
-python3 /app/get_time_salat.py &
+# Fetch prayer times
+python3 /app/get_time_salat.py
 
-cron -f &
+# Start cron daemon
+cron
 
-sleep 5
-
-tail -f /var/log/cron.log >&1
+# Keep container alive and stream logs
+tail -f /var/log/cron.log
