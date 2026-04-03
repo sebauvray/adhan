@@ -64,7 +64,7 @@ COPY ./providers /app/providers
 COPY ./HomePod.json /app/HomePod.json
 
 # Cron
-COPY ./salat.crontab /etc/cron.d/salat.crontab
+COPY ./salat.crontab /etc/cron.d/salat
 RUN touch /var/log/cron.log
 
 # Entrypoint

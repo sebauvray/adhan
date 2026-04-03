@@ -17,7 +17,7 @@ BASH_SCRIPT_PATH = '/app/adhan.sh'
 init_db()
 
 cron_file_path = os.environ.get('PATH_CRON', '/etc/cron.d')
-cron_file_name = 'salat.crontab'
+cron_file_name = 'salat'
 
 print(f"Récupération des salats le {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
