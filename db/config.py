@@ -331,7 +331,7 @@ def get_prayer_stats(user_id=None, period='month'):
         if period == 'month':
             date_filter = "date >= date('now', 'start of month')"
         elif period == 'year':
-            date_filter = "date >= date('now', 'start of year')"
+            date_filter = "date >= date('now', '-365 days')"
         else:
             date_filter = "1=1"
 
