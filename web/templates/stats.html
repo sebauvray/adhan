@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adhan Home - Statistiques</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="settings-page">
+  <div class="settings">
+
+    <div class="settings-header">
+      <div>
+        <img src="/static/logo.png" alt="Adhan Home" class="logo" style="height:80px;margin:0">
+      </div>
+      <div>
+        <h1 style="font-size:1.8rem;font-weight:600">Statistiques</h1>
+        <p style="font-size:0.85rem;color:var(--text-dark-muted)">Suivi des prieres</p>
+      </div>
+      <div>
+        <a href="/dashboard" class="link-action">&larr; Dashboard</a>
+      </div>
+    </div>
+
+    <div class="settings-content">
+      <div class="settings-left">
+        <div class="form-section">
+          <h2>Classement</h2>
+          <div class="stats-period">
+            <button class="btn btn-sm period-btn active" data-period="month" onclick="setPeriod('month')">Mois</button>
+            <button class="btn btn-sm period-btn" data-period="year" onclick="setPeriod('year')">Annee</button>
+            <button class="btn btn-sm period-btn" data-period="all" onclick="setPeriod('all')">Tout</button>
+          </div>
+          <div id="leaderboard"></div>
+        </div>
+      </div>
+
+      <div class="settings-right">
+        <div class="form-section">
+          <h2>Activite</h2>
+          <div class="stats-user-select">
+            <select id="heatmap-user" onchange="loadHeatmap()">
+              <option value="">Choisir un utilisateur...</option>
+            </select>
+          </div>
+          <div id="heatmap-container"></div>
+          <div class="heatmap-legend">
+            <span class="legend-label">Moins</span>
+            <span class="legend-cell" style="background:var(--heatmap-0)"></span>
+            <span class="legend-cell" style="background:var(--heatmap-1)"></span>
+            <span class="legend-cell" style="background:var(--heatmap-2)"></span>
+            <span class="legend-cell" style="background:var(--heatmap-3)"></span>
+            <span class="legend-cell" style="background:var(--heatmap-4)"></span>
+            <span class="legend-label">Plus</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentPeriod = 'month';
+
+    async function setPeriod(period) {
+      currentPeriod = period;
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === period));
+      await loadLeaderboard();
+    }
+
+    async function loadLeaderboard() {
+      const container = document.getElementById('leaderboard');
+      try {
+        const resp = await fetch('/api/stats?period=' + currentPeriod);
+        const data = await resp.json();
+        const users = data.leaderboard || [];
+
+        if (!users.length) {
+          container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-dark-muted);margin-top:1rem">Aucune donnee</p>';
+          return;
+        }
+
+        const max = users[0].count || 1;
+        container.innerHTML = users.map((u, i) => `
+          <div class="leaderboard-row">
+            <span class="lb-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)}</span>
+            <span class="lb-emoji">${u.emoji}</span>
+            <div class="lb-info">
+              <div class="lb-name">${u.name}</div>
+              <div class="lb-bar-track">
+                <div class="lb-bar" style="width:${(u.count/max)*100}%"></div>
+              </div>
+            </div>
+            <div class="lb-stats">
+              <span class="lb-count">${u.count}</span>
+              <span class="lb-streak" title="Serie en cours">${u.streak > 0 ? '🔥 ' + u.streak + 'j' : ''}</span>
+            </div>
+          </div>
+        `).join('');
+
+        // Populate user select for heatmap
+        const select = document.getElementById('heatmap-user');
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Choisir un utilisateur...</option>' +
+          (data.users || []).map(u => `<option value="${u.id}" ${u.id == currentVal ? 'selected' : ''}>${u.emoji} ${u.name}</option>`).join('');
+      } catch (e) {
+        container.innerHTML = '<p style="font-size:0.85rem;color:#c53030">Erreur</p>';
+      }
+    }
+
+    async function loadHeatmap() {
+      const container = document.getElementById('heatmap-container');
+      const userId = document.getElementById('heatmap-user').value;
+      if (!userId) {
+        container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-dark-muted);margin-top:1rem">Selectionne un utilisateur</p>';
+        return;
+      }
+
+      try {
+        const resp = await fetch('/api/stats?period=year&user_id=' + userId);
+        const data = await resp.json();
+        const heatmap = data.heatmap || {};
+        const streak = data.streak || 0;
+
+        // Build 52-week heatmap grid (like GitHub/GitLab)
+        const today = new Date();
+        const days = [];
+        // Go back ~364 days to start on a Monday
+        const start = new Date(today);
+        start.setDate(start.getDate() - 363);
+        // Align to Monday
+        while (start.getDay() !== 1) start.setDate(start.getDate() - 1);
+
+        const end = new Date(today);
+        const d = new Date(start);
+        while (d <= end) {
+          const key = d.toISOString().slice(0, 10);
+          days.push({ date: key, count: heatmap[key] || 0, day: d.getDay() });
+          d.setDate(d.getDate() + 1);
+        }
+
+        // Group by weeks
+        const weeks = [];
+        let week = [];
+        for (const day of days) {
+          week.push(day);
+          if (day.day === 0) { // Sunday
+            weeks.push(week);
+            week = [];
+          }
+        }
+        if (week.length) weeks.push(week);
+
+        // Month labels
+        const months = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+        let monthLabels = '';
+        let lastMonth = -1;
+        weeks.forEach((w, i) => {
+          const m = new Date(w[0].date).getMonth();
+          if (m !== lastMonth) {
+            monthLabels += `<span style="grid-column:${i+2}">${months[m]}</span>`;
+            lastMonth = m;
+          }
+        });
+
+        let html = `<div class="heatmap-streak">Serie en cours : <strong>🔥 ${streak} jour${streak > 1 ? 's' : ''}</strong></div>`;
+        html += `<div class="heatmap-grid" style="grid-template-columns: 20px repeat(${weeks.length}, 1fr)">`;
+        html += `<div class="heatmap-months" style="grid-column: 2 / -1; display:grid; grid-template-columns:subgrid">${monthLabels}</div>`;
+
+        // Day labels
+        const dayLabels = ['', 'L', '', 'M', '', 'V', ''];
+        for (let row = 0; row < 7; row++) {
+          html += `<span class="heatmap-day-label">${dayLabels[row]}</span>`;
+          for (const w of weeks) {
+            const cell = w.find(d => d.day === (row === 0 ? 1 : row === 1 ? 2 : row === 2 ? 3 : row === 3 ? 4 : row === 4 ? 5 : row === 5 ? 6 : 0));
+            // Remap: row 0=Mon(1), row 1=Tue(2), ..., row 5=Sat(6), row 6=Sun(0)
+            const targetDay = row < 6 ? row + 1 : 0;
+            const cell2 = w.find(d => d.day === targetDay);
+            if (cell2) {
+              const level = cell2.count === 0 ? 0 : cell2.count <= 1 ? 1 : cell2.count <= 2 ? 2 : cell2.count <= 3 ? 3 : 4;
+              html += `<span class="heatmap-cell level-${level}" title="${cell2.date}: ${cell2.count}/5 prieres"></span>`;
+            } else {
+              html += `<span class="heatmap-cell empty"></span>`;
+            }
+          }
+        }
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (e) {
+        container.innerHTML = '<p style="font-size:0.85rem;color:#c53030">Erreur</p>';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLeaderboard();
+    });
+  </script>
+</body>
+</html>
