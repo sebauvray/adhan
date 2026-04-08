@@ -1,7 +1,7 @@
 /* === Dashboard JavaScript === */
 
 const PHONETIC = {
-  Fajr: 'Fadjer', Dhuhr: 'Dohr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Icha'
+  Fajr: 'Fajr', Dhuhr: 'Dhuhr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Isha'
 };
 
 const WEATHER_ICONS = {
@@ -66,14 +66,237 @@ function updateCountdown() {
   el.textContent = text;
 }
 
+/* --- Prayer Tracking --- */
+
+let trackingUsers = [];
+let trackingLogs = {};
+let activePrayer = null;
+let prayerStatuses = {};
+let sunriseTime = null;
+
+async function fetchTrackingData() {
+  try {
+    const date = new Date().toISOString().slice(0, 10);
+    const resp = await fetch('/api/prayer-logs/' + date);
+    if (resp.ok) {
+      const data = await resp.json();
+      trackingUsers = data.users || [];
+      trackingLogs = data.logs || {};
+      updatePrayerBadges();
+    }
+  } catch (e) {
+    console.error('Erreur fetch tracking:', e);
+  }
+}
+
+function updatePrayerBadges() {
+  // Show a small count badge on each prayer that has logs
+  document.querySelectorAll('.prayer-item').forEach(item => {
+    const prayer = item.dataset.prayer;
+    if (!prayer) return;
+    const count = (trackingLogs[prayer] || []).length;
+    let badge = item.querySelector('.prayer-badge');
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'prayer-badge';
+        item.appendChild(badge);
+      }
+      badge.textContent = trackingUsers
+        .filter(u => (trackingLogs[prayer] || []).includes(u.id))
+        .map(u => u.emoji).join('');
+    } else if (badge) {
+      badge.remove();
+    }
+  });
+}
+
+function isPrayerLate(prayer) {
+  if (prayer === 'Fajr' && sunriseTime) {
+    const now = new Date();
+    const [h, m] = sunriseTime.split(':').map(Number);
+    if (now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m)) {
+      return true;
+    }
+  }
+  return prayerStatuses[prayer] === 'past';
+}
+
+function showWarning() {
+  const overlay = document.getElementById('tracking-overlay');
+  const container = document.getElementById('tracking-users');
+  document.getElementById('tracking-prayer-name').textContent = '';
+  container.innerHTML = '<div class="tracking-warning"><span style="font-size:2.5rem">☝️</span><p>Dieu te voit tu sais...</p></div>';
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => overlay.classList.add('open'));
+  setTimeout(() => closeTracking(), 4000);
+}
+
+function openTracking(prayer) {
+  if (prayerStatuses[prayer] === 'upcoming') {
+    showWarning();
+    return;
+  }
+  activePrayer = prayer;
+  const overlay = document.getElementById('tracking-overlay');
+  const container = document.getElementById('tracking-users');
+  document.getElementById('tracking-prayer-name').textContent = PHONETIC[prayer] || prayer;
+
+  if (!trackingUsers.length) {
+    container.innerHTML = '<p style="font-size:0.85rem;color:rgba(26,26,26,0.5);margin:1rem 0">Ajoute des utilisateurs dans les <a href="/settings" style="color:#c8a97e">Parametres</a></p>';
+  } else {
+    const loggedIds = trackingLogs[prayer] || [];
+    let html = trackingUsers.map((u, i) => {
+      const done = loggedIds.includes(u.id);
+      return `<button class="tracking-avatar ${done ? 'done' : ''}" data-user="${u.id}" onclick="toggleUserPrayer(this)" style="animation-delay:${i * 0.07}s">
+        <span class="tracking-avatar-emoji">${u.emoji}</span>
+        <span class="tracking-avatar-name">${u.name}</span>
+        ${done ? '<span class="tracking-avatar-check">&#10003;</span>' : ''}
+      </button>`;
+    }).join('');
+
+    if (isPrayerLate(prayer)) {
+      html += '<p class="tracking-reminder">Chaque priere a son heure, ne tarde pas la prochaine fois inch\u2019Allah !</p>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  overlay.style.display = 'flex';
+  // Trigger animation
+  requestAnimationFrame(() => overlay.classList.add('open'));
+}
+
+function closeTracking(event) {
+  if (event && event.target !== event.currentTarget) return;
+  const overlay = document.getElementById('tracking-overlay');
+  overlay.classList.remove('open');
+  setTimeout(() => { overlay.style.display = 'none'; }, 250);
+  activePrayer = null;
+}
+
+async function toggleUserPrayer(btn) {
+  const userId = parseInt(btn.dataset.user);
+  const prayer = activePrayer;
+  if (!prayer) return;
+
+  const loggedIds = trackingLogs[prayer] || [];
+  const isDone = loggedIds.includes(userId);
+  const date = new Date().toISOString().slice(0, 10);
+
+  if (isDone) {
+    // Unlog
+    try {
+      await fetch('/api/prayer-log', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, prayer, date }),
+      });
+      trackingLogs[prayer] = loggedIds.filter(id => id !== userId);
+      btn.classList.remove('done');
+      btn.querySelector('.tracking-avatar-check')?.remove();
+      updatePrayerBadges();
+      setTimeout(() => closeTracking(), 800);
+    } catch (e) {
+      console.error('Erreur unlog prayer:', e);
+    }
+  } else {
+    // Log
+    try {
+      await fetch('/api/prayer-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, prayer, date }),
+      });
+      if (!trackingLogs[prayer]) trackingLogs[prayer] = [];
+      trackingLogs[prayer].push(userId);
+      btn.classList.add('done');
+      // Add check mark
+      const check = document.createElement('span');
+      check.className = 'tracking-avatar-check';
+      check.innerHTML = '&#10003;';
+      btn.appendChild(check);
+      updatePrayerBadges();
+      // Confetti + close after animation
+      launchConfetti();
+      setTimeout(() => closeTracking(), 800);
+    } catch (e) {
+      console.error('Erreur log prayer:', e);
+    }
+  }
+}
+
+/* --- Confetti --- */
+
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ['#c8a97e', '#e8d5b7', '#f5f0e8', '#a68a5b', '#FFD700', '#FF6B6B', '#4ECDC4'];
+  const particles = [];
+
+  for (let i = 0; i < 120; i++) {
+    particles.push({
+      x: canvas.width / 2 + (Math.random() - 0.5) * 200,
+      y: canvas.height / 2,
+      vx: (Math.random() - 0.5) * 15,
+      vy: (Math.random() - 1) * 18 - 5,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 6 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 12,
+      life: 1,
+    });
+  }
+
+  let frame = 0;
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+
+    particles.forEach(p => {
+      if (p.life <= 0) return;
+      alive = true;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.4;
+      p.rotation += p.rotSpeed;
+      p.life -= 0.012;
+      p.vx *= 0.99;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+
+    frame++;
+    if (alive && frame < 180) {
+      requestAnimationFrame(animate);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  animate();
+}
+
 /* --- Prayers --- */
 
 function renderPrayers(data) {
   const list = document.getElementById('prayers-list');
   if (!list || !data.prayers) return;
 
+  data.prayers.forEach(p => { prayerStatuses[p.name] = p.status; });
+
   list.innerHTML = data.prayers.map(p => `
-    <div class="prayer-item ${p.status}">
+    <div class="prayer-item ${p.status}" data-prayer="${p.name}" onclick="openTracking('${p.name}')">
       <span class="prayer-name">${PHONETIC[p.name] || p.name}</span>
       <span class="prayer-time">${p.adhan}</span>
       <span class="prayer-iqama">
@@ -105,6 +328,7 @@ async function fetchPrayers() {
     if (resp.ok) {
       const data = await resp.json();
       renderPrayers(data);
+      updatePrayerBadges();
     }
   } catch (e) {
     console.error('Erreur fetch prayers:', e);
@@ -127,22 +351,38 @@ async function fetchWeather() {
   }
 }
 
+/* --- Sunrise (Chourouk) --- */
+
+async function fetchSunrise() {
+  try {
+    const resp = await fetch('/api/sunrise');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const el = document.getElementById('sunrise-info');
+    if (data.time && el) {
+      sunriseTime = data.time;
+      document.getElementById('sunrise-time').textContent = data.time;
+      el.style.display = 'flex';
+    }
+  } catch (e) {
+    console.error('Erreur fetch sunrise:', e);
+  }
+}
+
 /* --- Jumua (Friday) --- */
 
 async function fetchJumua() {
-  const footer = document.getElementById('dash-footer');
-  if (!footer) return;
-
   const isFriday = new Date().getDay() === 5;
-  if (!isFriday) { footer.style.display = 'none'; return; }
+  if (!isFriday) return;
 
   try {
     const resp = await fetch('/api/jumua');
     if (!resp.ok) return;
     const data = await resp.json();
-    if (data.times && data.times.length > 0) {
+    const el = document.getElementById('jumua-info');
+    if (data.times && data.times.length > 0 && el) {
       document.getElementById('jumua-times').innerHTML = data.times.join(' <span class="jumua-sep">/</span> ');
-      footer.style.display = 'block';
+      el.style.display = 'flex';
     }
   } catch (e) {
     console.error('Erreur fetch jumua:', e);
@@ -158,12 +398,14 @@ function initDashboard() {
   setInterval(updateClock, 1000);
   setInterval(updateCountdown, 1000);
 
-  fetchPrayers();
+  fetchPrayers().then(() => fetchTrackingData());
   setInterval(fetchPrayers, 60000);
+  setInterval(fetchTrackingData, 60000);
 
   fetchWeather();
   setInterval(fetchWeather, 1800000);
 
+  fetchSunrise();
   fetchJumua();
 }
 

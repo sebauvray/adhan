@@ -28,7 +28,14 @@
         <div class="clock__date" id="clock-date"></div>
         <div class="clock__time" id="clock-time"></div>
       </div>
-      <div>
+      <div style="display:flex;gap:0.3rem">
+        <a href="/stats" class="icon-btn" title="Statistiques">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="12" width="4" height="9" rx="1"/>
+            <rect x="10" y="7" width="4" height="14" rx="1"/>
+            <rect x="17" y="3" width="4" height="18" rx="1"/>
+          </svg>
+        </a>
         <a href="/settings" class="icon-btn settings-btn" title="Paramètres">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
@@ -55,20 +62,56 @@
       </div>
     </div>
 
-    <div class="dash-footer" id="dash-footer" style="display:none">
-      <div class="jumua-info">
-        <svg class="jumua-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2C10.34 2 9 3.34 9 5s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-          <path d="M12 10c-1.1 0-2 .45-2 1v3l-2 6h2l1-3h2l1 3h2l-2-6v-3c0-.55-.9-1-2-1z"/>
-        </svg>
-        <div class="jumua-details">
-          <span class="jumua-label">Jumu'a</span>
-          <span class="jumua-times" id="jumua-times"></span>
+    <div class="dash-footer" id="dash-footer">
+      <div class="footer-items">
+        <div class="footer-info" id="sunrise-info" style="display:none">
+          <svg class="footer-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4"/>
+            <path d="m4.93 4.93 2.83 2.83"/>
+            <path d="M2 12h4"/>
+            <path d="m19.07 4.93-2.83 2.83"/>
+            <path d="M22 12h-4"/>
+            <path d="m4 22 4-4"/>
+            <path d="m20 22-4-4"/>
+            <path d="M2 16h20"/>
+            <path d="M12 16a4 4 0 0 0 0-8"/>
+            <path d="M12 8a4 4 0 0 1 0 8"/>
+          </svg>
+          <div class="footer-details">
+            <span class="footer-label">Chourouk</span>
+            <span class="footer-value" id="sunrise-time"></span>
+          </div>
+        </div>
+        <div class="footer-info" id="jumua-info" style="display:none">
+          <svg class="footer-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2C10.34 2 9 3.34 9 5s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            <path d="M12 10c-1.1 0-2 .45-2 1v3l-2 6h2l1-3h2l1 3h2l-2-6v-3c0-.55-.9-1-2-1z"/>
+          </svg>
+          <div class="footer-details">
+            <span class="footer-label">Jumu'a</span>
+            <span class="footer-value" id="jumua-times"></span>
+          </div>
         </div>
       </div>
     </div>
 
   </div>
+
+  <!-- Prayer tracking overlay -->
+  <div class="tracking-overlay" id="tracking-overlay" style="display:none" onclick="closeTracking(event)">
+    <div class="tracking-panel">
+      <div class="tracking-header">
+        <span class="tracking-prayer-name" id="tracking-prayer-name"></span>
+        <button class="tracking-close" onclick="closeTracking()">&times;</button>
+      </div>
+      <div class="tracking-subtitle">Qui a prie ?</div>
+      <div class="tracking-users" id="tracking-users"></div>
+    </div>
+  </div>
+
+  <!-- Confetti canvas -->
+  <canvas id="confetti-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999"></canvas>
+
   <script src="/static/app.js"></script>
 </body>
 </html>
