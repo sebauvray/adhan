@@ -92,6 +92,18 @@
             <input type="text" id="api_token" placeholder="Collez votre token ici">
           </div>
         </div>
+
+        <div class="form-section">
+          <h2>Utilisateurs</h2>
+          <div id="users-list"></div>
+          <div class="user-add-form">
+            <button type="button" class="emoji-pick-btn" id="new-user-emoji-btn" onclick="toggleEmojiPicker(this)">🙂</button>
+            <input type="hidden" id="new-user-emoji" value="🙂">
+            <input type="text" id="new-user-name" placeholder="Nom" class="user-name-input" onkeydown="if(event.key==='Enter')addUser()">
+            <button type="button" class="btn btn-action btn-sm" onclick="addUser()">+</button>
+          </div>
+          <div class="emoji-picker" id="emoji-picker" style="display:none"></div>
+        </div>
       </div>
 
       <div class="settings-right">
@@ -257,6 +269,9 @@
       // Prayer outputs
       loadPrayerOutputs();
 
+      // Users
+      loadUsers();
+
       // Upload handlers
       const fileInput = document.getElementById('adhan_upload');
       if (fileInput) {
@@ -300,7 +315,7 @@
     // --- Prayer outputs ---
 
     const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-    const PRAYER_LABELS = { Fajr: 'Fajr', Dhuhr: 'Dohr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Icha' };
+    const PRAYER_LABELS = { Fajr: 'Fajr', Dhuhr: 'Dhuhr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Isha' };
 
     async function loadPrayerOutputs() {
       const container = document.getElementById('prayer-outputs-config');
@@ -380,6 +395,105 @@
         headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
         body: JSON.stringify({ outputs: { [prayer]: selected }, volumes: { [prayer]: volume } }),
       });
+    }
+
+    // --- Emoji Picker ---
+
+    const EMOJI_LIST = [
+      '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊',
+      '😇','🥰','😍','🤩','😎','🤓','🧐','🤠','🥳','😏',
+      '😺','🐶','🐱','🦁','🐯','🐻','🐼','🐸','🐵','🦊',
+      '🦄','🐝','🦋','🐢','🐙','🦈','🐬','🦅','🦉','🐧',
+      '🌟','⭐','🌙','☀️','🔥','💧','❄️','🌈','🍀','🌸',
+      '🏀','⚽','🎯','🎮','🎸','🎨','📚','💻','🚀','✈️',
+      '👨','👩','👦','👧','👶','🧔','👳','👲','🧕','👼',
+    ];
+
+    let activePickerTarget = null;
+
+    function toggleEmojiPicker(btn) {
+      const picker = document.getElementById('emoji-picker');
+      if (picker.style.display !== 'none' && activePickerTarget === btn) {
+        picker.style.display = 'none';
+        activePickerTarget = null;
+        return;
+      }
+      activePickerTarget = btn;
+      picker.innerHTML = EMOJI_LIST.map(e =>
+        `<button type="button" class="emoji-option" onclick="selectEmoji('${e}')">${e}</button>`
+      ).join('');
+      picker.style.display = 'grid';
+    }
+
+    function selectEmoji(emoji) {
+      if (activePickerTarget) {
+        activePickerTarget.textContent = emoji;
+        // Update the hidden input or data attribute
+        const hiddenInput = activePickerTarget.id === 'new-user-emoji-btn'
+          ? document.getElementById('new-user-emoji')
+          : null;
+        if (hiddenInput) hiddenInput.value = emoji;
+        // If editing existing user
+        const userId = activePickerTarget.dataset.userId;
+        if (userId) {
+          updateUserEmoji(parseInt(userId), emoji);
+        }
+      }
+      document.getElementById('emoji-picker').style.display = 'none';
+      activePickerTarget = null;
+    }
+
+    async function updateUserEmoji(userId, emoji) {
+      const row = document.querySelector(`.user-item[data-id="${userId}"]`);
+      const name = row ? row.querySelector('.user-name').textContent : '';
+      await fetch('/api/users/' + userId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, emoji }),
+      });
+    }
+
+    // --- Users ---
+
+    async function loadUsers() {
+      const container = document.getElementById('users-list');
+      if (!container) return;
+      try {
+        const resp = await fetch('/api/users');
+        const data = await resp.json();
+        container.innerHTML = (data.users || []).map(u => `
+          <div class="user-item" data-id="${u.id}">
+            <button type="button" class="emoji-pick-btn" data-user-id="${u.id}" onclick="toggleEmojiPicker(this)">${u.emoji}</button>
+            <span class="user-name">${u.name}</span>
+            <button type="button" class="remove-btn" onclick="deleteUser(${u.id})" title="Supprimer">&times;</button>
+          </div>
+        `).join('') || '<p style="font-size:0.8rem;color:var(--text-dark-muted)">Aucun utilisateur</p>';
+      } catch (e) {
+        container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">Erreur</p>';
+      }
+    }
+
+    async function addUser() {
+      const nameInput = document.getElementById('new-user-name');
+      const emojiInput = document.getElementById('new-user-emoji');
+      const name = nameInput.value.trim();
+      const emoji = emojiInput.value.trim() || '🙂';
+      if (!name) return;
+      await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, emoji }),
+      });
+      nameInput.value = '';
+      emojiInput.value = '🙂';
+      document.getElementById('new-user-emoji-btn').textContent = '🙂';
+      loadUsers();
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('Supprimer cet utilisateur et son historique ?')) return;
+      await fetch('/api/users/' + id, { method: 'DELETE' });
+      loadUsers();
     }
 
     // --- Play/Stop test ---
