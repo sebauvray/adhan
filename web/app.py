@@ -19,7 +19,10 @@ from db.config import (
     is_configured, get_token, create_token, validate_token,
     get_prayer_outputs, set_prayer_outputs,
     get_all_prayer_volumes, set_prayer_volume,
-    get_prayer_times_for_date
+    get_prayer_times_for_date,
+    get_users, create_user, update_user, delete_user,
+    log_prayer, unlog_prayer, get_prayer_logs_for_date,
+    get_prayer_stats, get_user_streak,
 )
 from providers.mawaqit_http_provider import get_full_data
 
@@ -72,6 +75,13 @@ async def settings_page(request: Request):
     if not is_configured():
         return RedirectResponse("/setup")
     return templates.TemplateResponse(request, "settings.html")
+
+
+@app.get("/stats", response_class=HTMLResponse)
+async def stats_page(request: Request):
+    if not is_configured():
+        return RedirectResponse("/setup")
+    return templates.TemplateResponse(request, "stats.html")
 
 
 # --- API ---
@@ -172,6 +182,12 @@ async def api_jumua():
     if not jumua_str:
         return {"times": []}
     return {"times": jumua_str.split(',')}
+
+
+@app.get("/api/sunrise")
+async def api_sunrise():
+    sunrise = get_value('config', 'SUNRISE', '')
+    return {"time": sunrise}
 
 
 @app.get("/api/weather")
@@ -449,6 +465,90 @@ async def api_delete_adhan():
         os.remove(adhan_file)
     set_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3')
     return {"success": True}
+
+
+# --- Users API ---
+
+@app.get("/api/users")
+async def api_get_users():
+    return {"users": get_users()}
+
+
+@app.post("/api/users")
+async def api_create_user(payload: dict):
+    name = payload.get('name', '').strip()
+    emoji = payload.get('emoji', '🙂').strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom requis")
+    user_id = create_user(name, emoji)
+    return {"success": True, "id": user_id}
+
+
+@app.put("/api/users/{user_id}")
+async def api_update_user(user_id: int, payload: dict):
+    name = payload.get('name', '').strip()
+    emoji = payload.get('emoji', '🙂').strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom requis")
+    update_user(user_id, name, emoji)
+    return {"success": True}
+
+
+@app.delete("/api/users/{user_id}")
+async def api_delete_user(user_id: int):
+    delete_user(user_id)
+    return {"success": True}
+
+
+# --- Prayer Logs API ---
+
+@app.post("/api/prayer-log")
+async def api_log_prayer(payload: dict):
+    user_id = payload.get('user_id')
+    prayer = payload.get('prayer')
+    date = payload.get('date')
+    if not all([user_id, prayer, date]):
+        raise HTTPException(status_code=400, detail="user_id, prayer et date requis")
+    log_prayer(user_id, prayer, date)
+    return {"success": True}
+
+
+@app.delete("/api/prayer-log")
+async def api_unlog_prayer(payload: dict):
+    user_id = payload.get('user_id')
+    prayer = payload.get('prayer')
+    date = payload.get('date')
+    if not all([user_id, prayer, date]):
+        raise HTTPException(status_code=400, detail="user_id, prayer et date requis")
+    unlog_prayer(user_id, prayer, date)
+    return {"success": True}
+
+
+@app.get("/api/prayer-logs/{date}")
+async def api_get_prayer_logs(date: str):
+    logs = get_prayer_logs_for_date(date)
+    users = get_users()
+    return {"logs": logs, "users": users}
+
+
+# --- Stats API ---
+
+@app.get("/api/stats")
+async def api_stats(period: str = 'month', user_id: int = None):
+    users = get_users()
+    if user_id:
+        heatmap = get_prayer_stats(user_id=user_id, period=period)
+        streak = get_user_streak(user_id)
+        return {"heatmap": heatmap, "streak": streak}
+    else:
+        leaderboard_data = get_prayer_stats(period=period)
+        leaderboard = []
+        for u in users:
+            count = leaderboard_data.get(u['id'], 0)
+            streak = get_user_streak(u['id'])
+            leaderboard.append({**u, "count": count, "streak": streak})
+        leaderboard.sort(key=lambda x: x['count'], reverse=True)
+        return {"leaderboard": leaderboard, "users": users}
 
 
 @app.post("/api/validate-url")
