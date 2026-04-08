@@ -49,6 +49,23 @@ CREATE TABLE IF NOT EXISTS api_tokens (
     description TEXT,
     created_at  TEXT    DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL,
+    emoji      TEXT    NOT NULL DEFAULT '🙂',
+    created_at TEXT    DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS prayer_logs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL,
+    prayer     TEXT    NOT NULL,
+    date       TEXT    NOT NULL,
+    created_at TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE (user_id, prayer, date)
+);
 """
 
 
