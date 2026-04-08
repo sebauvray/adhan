@@ -39,6 +39,8 @@ Two Docker containers share a SQLite database and a cron volume:
 - `owntone` table — HOST, PORT, ADHAN_FILE, ADHAN_VOLUME
 - `homepods` table — name, morning, afternoon, evening booleans
 - `api_tokens` table — bearer tokens for protected endpoints
+- `users` table — id, name, emoji, created_at
+- `prayer_logs` table — user_id, prayer, date (unique per user/prayer/date)
 
 **`.env`** is infrastructure only: TZ, ports, build versions.
 
@@ -50,13 +52,19 @@ Two Docker containers share a SQLite database and a cron volume:
 - `POST /api/config` — update config (requires Bearer token)
 - `POST /api/refresh` — re-run get_time_salat.py (requires Bearer token)
 - `POST /api/validate-url` — validate mawaqit URL, returns prayer preview
+- `GET/POST /api/users` — list/create users
+- `PUT/DELETE /api/users/{id}` — update/delete user
+- `POST/DELETE /api/prayer-log` — log/unlog a prayer for a user on a date
+- `GET /api/prayer-logs/{date}` — get prayer logs + users for a date
+- `GET /api/stats` — leaderboard or heatmap (params: period, user_id)
 
 ## Web UI Pages
 
 - `/` — redirects to `/setup` or `/dashboard`
-- `/dashboard` — prayer times, weather, clock, countdown
+- `/dashboard` — prayer times, weather, clock, countdown, prayer tracking avatars
 - `/setup` — first-launch wizard
-- `/settings` — all config editable (gear icon on dashboard)
+- `/settings` — all config editable (gear icon on dashboard), user management
+- `/stats` — leaderboard + heatmap (bar chart icon on dashboard)
 
 ## Mawaqit confData Structure
 

@@ -37,6 +37,17 @@
   - Volume alerte : même volume que l'adhan de la prière ? ou volume dédié configurable ?
   - HomePods alerte : mêmes speakers que l'adhan ? ou config séparée ?
 
+- [ ] **Page stats — améliorations futures**
+  - [ ] Filtrer la heatmap par mois (pas seulement année)
+  - [ ] Export des données (CSV)
+  - [ ] Graphique en barres par jour de la semaine
+
 ## Fait
 
-<!-- Items terminés -->
+- [x] **Suivi des prières par utilisateur**
+  - Tables `users` et `prayer_logs` en SQLite
+  - CRUD utilisateurs dans Settings (nom + emoji)
+  - Avatars cliquables sous chaque prière sur le dashboard
+  - Modal de confirmation + animation confettis
+  - Page `/stats` avec classement (mois/année/tout) et heatmap façon GitLab
+  - Streak (série de jours consécutifs)
