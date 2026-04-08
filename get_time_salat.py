@@ -65,6 +65,8 @@ def fetch_and_store(target_date):
         set_value('config', 'CITY', data['city'])
     if data.get('jumua'):
         set_value('config', 'JUMUA', ','.join(data['jumua']))
+    if data.get('sunrise'):
+        set_value('config', 'SUNRISE', data['sunrise'])
 
     print(f"Horaires stockés pour le {target_date.strftime('%Y-%m-%d')} : "
           f"{[p['adhan'] for p in data['prayers']]}")

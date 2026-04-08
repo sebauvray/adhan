@@ -69,27 +69,31 @@ def _get_day_from_calendar(conf, target_date):
     if not day_times or len(day_times) < 6:
         return None
 
-    return [day_times[i] for i in CALENDAR_INDICES]
+    return [day_times[i] for i in CALENDAR_INDICES], day_times[1]
 
 
 def _get_adhan_times_from_calendar(conf, use_next_day=False):
     """
     Extract adhan times from conf.calendar.
     If use_next_day is True and all prayers are past, return tomorrow's times.
+    Returns (prayer_times, sunrise) or (None, None).
     """
     now = datetime.now()
-    today_times = _get_day_from_calendar(conf, now)
+    result = _get_day_from_calendar(conf, now)
+    if result is None:
+        return None, None
+    today_times, sunrise = result
 
     if use_next_day and today_times:
         last_prayer = today_times[-1]
         h, m = map(int, last_prayer.split(':'))
         if now.time() > now.replace(hour=h, minute=m, second=0).time():
             tomorrow = now + timedelta(days=1)
-            tomorrow_times = _get_day_from_calendar(conf, tomorrow)
-            if tomorrow_times:
-                return tomorrow_times
+            result_tomorrow = _get_day_from_calendar(conf, tomorrow)
+            if result_tomorrow:
+                return result_tomorrow
 
-    return today_times
+    return today_times, sunrise
 
 
 def _compute_iqama_times(adhan_times, conf, target_date=None):
@@ -143,7 +147,7 @@ def get_prayer_times(url):
     """
     conf, slug = _fetch_conf_data(url)
 
-    adhan_times = _get_adhan_times_from_calendar(conf, use_next_day=False)
+    adhan_times, _ = _get_adhan_times_from_calendar(conf, use_next_day=False)
     if not adhan_times:
         adhan_times = conf.get('times', [])[:5]
         print(f"[mawaqit] Calendar unavailable, using conf.times as fallback")
@@ -173,9 +177,10 @@ def get_full_data(url):
     """
     conf, slug = _fetch_conf_data(url)
 
-    adhan_times = _get_adhan_times_from_calendar(conf, use_next_day=True)
+    adhan_times, sunrise = _get_adhan_times_from_calendar(conf, use_next_day=True)
     if not adhan_times:
         adhan_times = conf.get('times', [])[:5]
+        sunrise = None
 
     if not adhan_times or len(adhan_times) < 5:
         raise ValueError("Horaires introuvables dans confData")
@@ -204,6 +209,7 @@ def get_full_data(url):
         'lat': conf.get('latitude', conf.get('lat')),
         'lng': conf.get('longitude', conf.get('lng')),
         'slug': slug,
+        'sunrise': sunrise,
     }
 
 
@@ -214,9 +220,12 @@ def get_full_data_for_date(url, target_date):
     """
     conf, slug = _fetch_conf_data(url)
 
-    adhan_times = _get_day_from_calendar(conf, target_date)
-    if not adhan_times:
+    result = _get_day_from_calendar(conf, target_date)
+    if result:
+        adhan_times, sunrise = result
+    else:
         adhan_times = conf.get('times', [])[:5]
+        sunrise = None
 
     if not adhan_times or len(adhan_times) < 5:
         raise ValueError("Horaires introuvables dans confData")
@@ -240,4 +249,5 @@ def get_full_data_for_date(url, target_date):
         'lng': conf.get('longitude', conf.get('lng')),
         'slug': slug,
         'jumua': jumua,
+        'sunrise': sunrise,
     }
