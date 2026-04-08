@@ -5,17 +5,27 @@ const PHONETIC = {
 };
 
 const WEATHER_ICONS = {
-  0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
-  45: '🌫️', 48: '🌫️',
-  51: '🌦️', 53: '🌦️', 55: '🌧️', 56: '🌧️', 57: '🌧️',
-  61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌧️', 67: '🌧️',
-  71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️',
-  80: '🌦️', 81: '🌦️', 82: '🌦️',
-  95: '⛈️', 96: '⛈️', 99: '⛈️',
+  // Day icons
+  '0_day': '☀️', '1_day': '🌤️', '2_day': '⛅', '3_day': '☁️',
+  '45_day': '🌫️', '48_day': '🌫️',
+  '51_day': '🌦️', '53_day': '🌦️', '55_day': '🌧️', '56_day': '🌧️', '57_day': '🌧️',
+  '61_day': '🌧️', '63_day': '🌧️', '65_day': '🌧️', '66_day': '🌧️', '67_day': '🌧️',
+  '71_day': '🌨️', '73_day': '🌨️', '75_day': '🌨️', '77_day': '🌨️',
+  '80_day': '🌦️', '81_day': '🌦️', '82_day': '🌦️',
+  '95_day': '⛈️', '96_day': '⛈️', '99_day': '⛈️',
+  // Night icons
+  '0_night': '🌙', '1_night': '☁️', '2_night': '☁️', '3_night': '☁️',
+  '45_night': '🌫️', '48_night': '🌫️',
+  '51_night': '🌧️', '53_night': '🌧️', '55_night': '🌧️', '56_night': '🌧️', '57_night': '🌧️',
+  '61_night': '🌧️', '63_night': '🌧️', '65_night': '🌧️', '66_night': '🌧️', '67_night': '🌧️',
+  '71_night': '🌨️', '73_night': '🌨️', '75_night': '🌨️', '77_night': '🌨️',
+  '80_night': '🌧️', '81_night': '🌧️', '82_night': '🌧️',
+  '95_night': '⛈️', '96_night': '⛈️', '99_night': '⛈️',
 };
 
-function getWeatherIcon(code) {
-  return WEATHER_ICONS[code] || '🌡️';
+function getWeatherIcon(code, isDay) {
+  const timeOfDay = isDay ? 'day' : 'night';
+  return WEATHER_ICONS[`${code}_${timeOfDay}`] || '🌡️';
 }
 
 /* --- Clock --- */
@@ -108,7 +118,7 @@ async function fetchWeather() {
     const resp = await fetch('/api/weather');
     if (resp.ok) {
       const data = await resp.json();
-      document.getElementById('weather-icon').textContent = getWeatherIcon(data.weather_code);
+      document.getElementById('weather-icon').textContent = getWeatherIcon(data.weather_code, data.is_day);
       document.getElementById('weather-temp').textContent = data.temperature + '°';
       document.getElementById('weather-city').textContent = data.city;
     }

@@ -195,6 +195,7 @@ async def api_weather():
             "city": city,
             "temperature": round(cw.get("temperature", 0)),
             "weather_code": cw.get("weathercode", 0),
+            "is_day": cw.get("is_day", 1),  # 1 for day, 0 for night
         }
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e))
