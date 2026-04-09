@@ -79,9 +79,9 @@ play_file_on_ids() {
 }
 
 resolve_track_uri() {
-  local file_path="${ADHAN_FILE:-}"
+  local file_path="${1:-${ADHAN_FILE:-}}"
   if [[ -z "$file_path" ]]; then
-    log ERROR "ADHAN_FILE not set"
+    log ERROR "Audio file not set"
     return 1
   fi
 
@@ -102,12 +102,18 @@ resolve_track_uri() {
 # --- Main ---
 
 PRAYER_NAME="${1:-}"
+PLAY_MODE="${2:-adhan}"
+
 if [[ -z "$PRAYER_NAME" ]]; then
-  log ERROR "Usage: adhan.sh <prayer_name>"
+  log ERROR "Usage: adhan.sh <prayer_name> [alert]"
   exit 1
 fi
 
-log INFO "Adhan triggered for: $PRAYER_NAME"
+if [[ "$PLAY_MODE" == "alert" ]]; then
+  log INFO "Iqama alert triggered for: $PRAYER_NAME"
+else
+  log INFO "Adhan triggered for: $PRAYER_NAME"
+fi
 
 # Get configured outputs for this prayer
 readarray -t HOMEPODS < <(python3 /app/get_homepods.py "$PRAYER_NAME")
@@ -167,7 +173,11 @@ if [[ ${#OUTPUT_IDS[@]} -eq 0 ]]; then
   exit 1
 fi
 
-TRACK_URI=$(resolve_track_uri) || exit 1
+if [[ "$PLAY_MODE" == "alert" ]]; then
+  TRACK_URI=$(resolve_track_uri "$ALERT_FILE") || exit 1
+else
+  TRACK_URI=$(resolve_track_uri "$ADHAN_FILE") || exit 1
+fi
 
 set_volume_for_ids "$ADHAN_VOLUME" "${OUTPUT_IDS[@]}"
 play_file_on_ids "$TRACK_URI" "${OUTPUT_IDS[@]}"

@@ -8,7 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from db.schema import init_db
 from db.config import (
     get_value, set_value, is_configured,
-    save_prayer_times, has_prayer_times, cleanup_old_prayer_times
+    save_prayer_times, has_prayer_times, cleanup_old_prayer_times,
+    get_all_alert_config,
 )
 from providers.mawaqit_http_provider import get_full_data_for_date
 
@@ -74,7 +75,7 @@ def fetch_and_store(target_date):
 
 
 def write_crontab(prayers):
-    """Write crontab with prayer entries + self-refresh after Isha."""
+    """Write crontab with prayer entries + iqama alerts + self-refresh after Isha."""
     cron_lines = []
 
     # Self-refresh 5 min after Isha
@@ -84,11 +85,23 @@ def write_crontab(prayers):
     cron_lines.append(f"# Refresh après Isha\n")
     cron_lines.append(f"{refresh_dt.minute} {refresh_dt.hour} * * * root python3 /app/get_time_salat.py >> /var/log/cron.log 2>&1\n")
 
+    # Alert config
+    alert_config = get_all_alert_config()
+
     # Prayer entries
     for p in prayers:
         h, m = map(int, p['adhan'].split(':'))
         cron_lines.append(f"# {p['name']}\n")
         cron_lines.append(f"{m} {h} * * * root bash {BASH_SCRIPT_PATH} {p['name']} >> /var/log/cron.log 2>&1\n")
+
+        # Iqama alert
+        cfg = alert_config.get(p['name'], {})
+        if cfg.get('enabled') and p.get('iqama'):
+            iq_h, iq_m = map(int, p['iqama'].split(':'))
+            delay = cfg.get('delay', 0)
+            alert_dt = datetime(2000, 1, 1, iq_h, iq_m) + timedelta(minutes=delay)
+            cron_lines.append(f"# {p['name']} iqama alert (+{delay}min)\n")
+            cron_lines.append(f"{alert_dt.minute} {alert_dt.hour} * * * root bash {BASH_SCRIPT_PATH} {p['name']} alert >> /var/log/cron.log 2>&1\n")
 
     cron_lines.append("\n")
 
