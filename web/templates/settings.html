@@ -119,7 +119,7 @@
           <div id="sound-config" style="display:none">
             <div style="margin-top:0.8rem">
               <div class="form-group">
-                <label>Fichier audio</label>
+                <label>Son adhan</label>
                 <input type="file" id="adhan_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="display:none">
                 <div class="upload-component">
                   <div id="upload-default">
@@ -136,6 +136,25 @@
                   </div>
                 </div>
                 <div id="upload-status" style="font-size:0.75rem;margin-top:0.3rem"></div>
+              </div>
+              <div class="form-group" style="margin-top:0.6rem">
+                <label>Son alerte iqama</label>
+                <input type="file" id="alert_upload" accept=".mp3,.wav,.ogg,.m4a,.flac" style="display:none">
+                <div class="upload-component">
+                  <div id="alert-upload-default">
+                    <span style="font-size:0.8rem;color:var(--text-dark-muted)">Fichier par défaut</span>
+                    <button type="button" class="btn btn-action" style="font-size:0.75rem;padding:0.3rem 0.8rem;margin-left:0.5rem" onclick="document.getElementById('alert_upload').click()">
+                      Personnaliser
+                    </button>
+                  </div>
+                  <div id="alert-upload-custom" style="display:none">
+                    <span class="upload-file-tag">
+                      <span class="filename" id="alert-upload-filename"></span>
+                      <button type="button" class="remove-btn" id="alert-upload-remove" title="Supprimer">&times;</button>
+                    </span>
+                  </div>
+                </div>
+                <div id="alert-upload-status" style="font-size:0.75rem;margin-top:0.3rem"></div>
               </div>
             </div>
             <p style="margin-top:0.5rem;font-size:0.8rem">
@@ -300,6 +319,41 @@
           showDefaultFile();
         });
       }
+
+      // Alert file upload
+      const alertInput = document.getElementById('alert_upload');
+      if (alertInput) {
+        alertInput.addEventListener('change', async () => {
+          const file = alertInput.files[0];
+          if (!file) return;
+          const status = document.getElementById('alert-upload-status');
+          status.textContent = 'Envoi en cours...';
+          status.style.color = 'var(--text-dark-muted)';
+          const formData = new FormData();
+          formData.append('file', file);
+          try {
+            const resp = await fetch('/api/upload-alert', { method: 'POST', body: formData });
+            const data = await resp.json();
+            if (data.success) { showCustomAlertFile(data.filename); status.textContent = ''; }
+            else { status.textContent = data.detail || 'Erreur'; status.style.color = '#c53030'; }
+          } catch (e) { status.textContent = 'Erreur'; status.style.color = '#c53030'; }
+        });
+      }
+
+      const alertRemoveBtn = document.getElementById('alert-upload-remove');
+      if (alertRemoveBtn) {
+        alertRemoveBtn.addEventListener('click', async () => {
+          if (!confirm('Supprimer le son d\'alerte personnalisé ?')) return;
+          await fetch('/api/upload-alert', { method: 'DELETE' });
+          showDefaultAlertFile();
+        });
+      }
+
+      // Alert file state from config
+      fetch('/api/config').then(r => r.json()).then(data => {
+        const alertFile = data.alert_file || '';
+        if (alertFile && alertFile !== '/srv/media/alert.mp3') showCustomAlertFile(alertFile.split('/').pop());
+      });
     });
 
     function showCustomFile(name) {
@@ -310,6 +364,15 @@
     function showDefaultFile() {
       document.getElementById('upload-default').style.display = 'inline-flex';
       document.getElementById('upload-custom').style.display = 'none';
+    }
+    function showCustomAlertFile(name) {
+      document.getElementById('alert-upload-default').style.display = 'none';
+      document.getElementById('alert-upload-custom').style.display = 'inline-flex';
+      document.getElementById('alert-upload-filename').textContent = name;
+    }
+    function showDefaultAlertFile() {
+      document.getElementById('alert-upload-default').style.display = 'inline-flex';
+      document.getElementById('alert-upload-custom').style.display = 'none';
     }
 
     // --- Prayer outputs ---
@@ -327,10 +390,14 @@
         const cfg = await configResp.json();
         const prayerOutputs = cfg.outputs || {};
         const prayerVolumes = cfg.volumes || {};
+        const prayerAlerts = cfg.alerts || {};
 
         container.innerHTML = PRAYERS.map(prayer => {
           const selectedIds = (prayerOutputs[prayer] || []).map(o => o.id);
           const volume = prayerVolumes[prayer] ?? 30;
+          const alertCfg = prayerAlerts[prayer] || {};
+          const alertEnabled = alertCfg.enabled || false;
+          const alertDelay = alertCfg.delay || 0;
           return `
             <div class="prayer-config-card" data-prayer="${prayer}">
               <div class="prayer-config-header">
@@ -351,6 +418,17 @@
                 <span>Volume</span>
                 <input type="range" min="0" max="100" value="${volume}" data-prayer="${prayer}" oninput="this.nextElementSibling.textContent=this.value">
                 <span class="prayer-volume-value">${volume}</span>
+              </div>
+              <div class="prayer-alert">
+                <label class="checkbox-label">
+                  <input type="checkbox" class="alert-checkbox" data-prayer="${prayer}" ${alertEnabled ? 'checked' : ''}>
+                  Alerte iqama
+                </label>
+                <div class="alert-delay ${alertEnabled ? '' : 'hidden'}">
+                  <span>+</span>
+                  <input type="number" class="alert-delay-input" data-prayer="${prayer}" value="${alertDelay}" min="0" max="60" step="5">
+                  <span>min</span>
+                </div>
               </div>
             </div>`;
         }).join('');
@@ -375,6 +453,29 @@
             showCardSaved(card);
           });
         });
+
+        // Alert checkbox -> toggle delay + auto-save
+        container.querySelectorAll('.alert-checkbox').forEach(cb => {
+          cb.addEventListener('change', async () => {
+            const card = cb.closest('.prayer-config-card');
+            card.querySelector('.alert-delay').classList.toggle('hidden', !cb.checked);
+            await savePrayerCard(card.dataset.prayer);
+            showCardSaved(card);
+          });
+        });
+
+        // Alert delay -> auto-save
+        container.querySelectorAll('.alert-delay-input').forEach(input => {
+          let orig = input.value;
+          input.addEventListener('focus', () => { orig = input.value; });
+          input.addEventListener('blur', async () => {
+            if (input.value !== orig) {
+              const card = input.closest('.prayer-config-card');
+              await savePrayerCard(card.dataset.prayer);
+              showCardSaved(card);
+            }
+          });
+        });
       } catch (e) {
         container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">Erreur de chargement</p>';
       }
@@ -389,11 +490,17 @@
         selected.push({ id: chip.dataset.id, name: chip.dataset.name });
       });
       const volume = parseInt(card.querySelector('input[type="range"]').value);
+      const alertCb = card.querySelector('.alert-checkbox');
+      const alertDelay = card.querySelector('.alert-delay-input');
+      const alert = {
+        enabled: alertCb ? alertCb.checked : false,
+        delay: alertDelay ? parseInt(alertDelay.value) || 0 : 0,
+      };
       const token = localStorage.getItem('adhan_token');
       await fetch('/api/prayer-outputs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
-        body: JSON.stringify({ outputs: { [prayer]: selected }, volumes: { [prayer]: volume } }),
+        body: JSON.stringify({ outputs: { [prayer]: selected }, volumes: { [prayer]: volume }, alerts: { [prayer]: alert } }),
       });
     }
 
