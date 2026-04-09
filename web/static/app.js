@@ -6,26 +6,33 @@ const PHONETIC = {
 
 const WEATHER_ICONS = {
   // Day icons
-  '0_day': '☀️', '1_day': '🌤️', '2_day': '⛅', '3_day': '☁️',
-  '45_day': '🌫️', '48_day': '🌫️',
-  '51_day': '🌦️', '53_day': '🌦️', '55_day': '🌧️', '56_day': '🌧️', '57_day': '🌧️',
-  '61_day': '🌧️', '63_day': '🌧️', '65_day': '🌧️', '66_day': '🌧️', '67_day': '🌧️',
-  '71_day': '🌨️', '73_day': '🌨️', '75_day': '🌨️', '77_day': '🌨️',
-  '80_day': '🌦️', '81_day': '🌦️', '82_day': '🌦️',
-  '95_day': '⛈️', '96_day': '⛈️', '99_day': '⛈️',
+  '0_day': 'clear-day', '1_day': 'clear-day',
+  '2_day': 'partly-cloudy-day', '3_day': 'overcast',
+  '45_day': 'fog-day', '48_day': 'fog-day',
+  '51_day': 'partly-cloudy-day-drizzle', '53_day': 'overcast-day-drizzle', '55_day': 'overcast-drizzle',
+  '56_day': 'overcast-day-sleet', '57_day': 'overcast-sleet',
+  '61_day': 'partly-cloudy-day-rain', '63_day': 'overcast-day-rain', '65_day': 'overcast-rain',
+  '66_day': 'overcast-day-sleet', '67_day': 'overcast-sleet',
+  '71_day': 'partly-cloudy-day-snow', '73_day': 'overcast-day-snow', '75_day': 'overcast-snow', '77_day': 'snowflake',
+  '80_day': 'partly-cloudy-day-rain', '81_day': 'overcast-day-rain', '82_day': 'overcast-rain',
+  '95_day': 'thunderstorms-day-rain', '96_day': 'thunderstorms-day-overcast-rain', '99_day': 'thunderstorms-overcast-rain',
   // Night icons
-  '0_night': '🌙', '1_night': '☁️', '2_night': '☁️', '3_night': '☁️',
-  '45_night': '🌫️', '48_night': '🌫️',
-  '51_night': '🌧️', '53_night': '🌧️', '55_night': '🌧️', '56_night': '🌧️', '57_night': '🌧️',
-  '61_night': '🌧️', '63_night': '🌧️', '65_night': '🌧️', '66_night': '🌧️', '67_night': '🌧️',
-  '71_night': '🌨️', '73_night': '🌨️', '75_night': '🌨️', '77_night': '🌨️',
-  '80_night': '🌧️', '81_night': '🌧️', '82_night': '🌧️',
-  '95_night': '⛈️', '96_night': '⛈️', '99_night': '⛈️',
+  '0_night': 'clear-night', '1_night': 'clear-night',
+  '2_night': 'partly-cloudy-night', '3_night': 'overcast',
+  '45_night': 'fog-night', '48_night': 'fog-night',
+  '51_night': 'partly-cloudy-night-drizzle', '53_night': 'overcast-night-drizzle', '55_night': 'overcast-drizzle',
+  '56_night': 'overcast-night-sleet', '57_night': 'overcast-sleet',
+  '61_night': 'partly-cloudy-night-rain', '63_night': 'overcast-night-rain', '65_night': 'overcast-rain',
+  '66_night': 'overcast-night-sleet', '67_night': 'overcast-sleet',
+  '71_night': 'partly-cloudy-night-snow', '73_night': 'overcast-night-snow', '75_night': 'overcast-snow', '77_night': 'snowflake',
+  '80_night': 'partly-cloudy-night-rain', '81_night': 'overcast-night-rain', '82_night': 'overcast-rain',
+  '95_night': 'thunderstorms-night-rain', '96_night': 'thunderstorms-night-overcast-rain', '99_night': 'thunderstorms-overcast-rain',
 };
 
 function getWeatherIcon(code, isDay) {
   const timeOfDay = isDay ? 'day' : 'night';
-  return WEATHER_ICONS[`${code}_${timeOfDay}`] || '🌡️';
+  const icon = WEATHER_ICONS[`${code}_${timeOfDay}`] || 'not-available';
+  return `/static/weather/${icon}.svg`;
 }
 
 /* --- Clock --- */
@@ -342,7 +349,7 @@ async function fetchWeather() {
     const resp = await fetch('/api/weather');
     if (resp.ok) {
       const data = await resp.json();
-      document.getElementById('weather-icon').textContent = getWeatherIcon(data.weather_code, data.is_day);
+      document.getElementById('weather-icon').src = getWeatherIcon(data.weather_code, data.is_day);
       document.getElementById('weather-temp').textContent = data.temperature + '°';
       document.getElementById('weather-city').textContent = data.city;
     }
