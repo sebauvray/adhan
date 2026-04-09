@@ -108,6 +108,50 @@ def validate_token(token):
         return False
 
 
+def get_alert_enabled(prayer):
+    try:
+        conn = _connect()
+        cur = conn.execute("SELECT alert_enabled FROM prayer_config WHERE prayer = ?", (prayer,))
+        row = cur.fetchone()
+        conn.close()
+        return bool(row[0]) if row else False
+    except Exception:
+        return False
+
+
+def set_alert_enabled(prayer, enabled):
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO prayer_config (prayer, alert_enabled) VALUES (?, ?) "
+        "ON CONFLICT(prayer) DO UPDATE SET alert_enabled = ?",
+        (prayer, int(enabled), int(enabled))
+    )
+    conn.commit()
+    conn.close()
+
+
+def set_alert_delay(prayer, delay):
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO prayer_config (prayer, alert_delay) VALUES (?, ?) "
+        "ON CONFLICT(prayer) DO UPDATE SET alert_delay = ?",
+        (prayer, int(delay), int(delay))
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_all_alert_config():
+    try:
+        conn = _connect()
+        cur = conn.execute("SELECT prayer, alert_enabled, alert_delay FROM prayer_config")
+        result = {r[0]: {"enabled": bool(r[1]), "delay": r[2]} for r in cur.fetchall()}
+        conn.close()
+        return result
+    except Exception:
+        return {}
+
+
 def get_prayer_volume(prayer, default=30):
     try:
         conn = _connect()

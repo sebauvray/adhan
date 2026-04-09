@@ -24,8 +24,10 @@ CREATE TABLE IF NOT EXISTS homepods (
 );
 
 CREATE TABLE IF NOT EXISTS prayer_config (
-    prayer TEXT PRIMARY KEY,
-    volume INTEGER NOT NULL DEFAULT 30
+    prayer        TEXT PRIMARY KEY,
+    volume        INTEGER NOT NULL DEFAULT 30,
+    alert_enabled INTEGER NOT NULL DEFAULT 0,
+    alert_delay   INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS prayer_outputs (
@@ -135,6 +137,7 @@ def _ensure_defaults(conn):
             'PORT': '3689',
             'ADHAN_FILE': '/srv/media/adhan.mp3',
             'ADHAN_VOLUME': '40',
+            'ALERT_FILE': '/srv/media/alert.mp3',
         },
         'config': {
             'LOG_LEVEL': 'INFO',
@@ -154,6 +157,20 @@ def _ensure_defaults(conn):
     conn.commit()
 
 
+def _migrate_alert_columns(conn):
+    """Add alert_enabled and alert_delay columns to prayer_config if missing."""
+    try:
+        cur = conn.execute("PRAGMA table_info(prayer_config)")
+        columns = [row[1] for row in cur.fetchall()]
+        if 'alert_enabled' not in columns:
+            conn.execute("ALTER TABLE prayer_config ADD COLUMN alert_enabled INTEGER NOT NULL DEFAULT 0")
+        if 'alert_delay' not in columns:
+            conn.execute("ALTER TABLE prayer_config ADD COLUMN alert_delay INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
+
 def init_db():
     db_path = get_db_path()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -162,4 +179,5 @@ def init_db():
     _ensure_defaults(conn)
     _migrate_env_to_db(conn)
     _migrate_homepod_json(conn)
+    _migrate_alert_columns(conn)
     conn.close()
