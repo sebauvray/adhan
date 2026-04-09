@@ -23,6 +23,7 @@ from db.config import (
     get_users, create_user, update_user, delete_user,
     log_prayer, unlog_prayer, get_prayer_logs_for_date,
     get_prayer_stats, get_user_streak,
+    get_all_alert_config, set_alert_enabled, set_alert_delay,
 )
 from providers.mawaqit_http_provider import get_full_data
 
@@ -228,6 +229,7 @@ async def api_get_config():
         "owntone_port": get_value('owntone', 'PORT', '3689'),
         "adhan_file": get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3'),
         "adhan_volume": get_value('owntone', 'ADHAN_VOLUME', '40'),
+        "alert_file": get_value('owntone', 'ALERT_FILE', '/srv/media/alert.mp3'),
         "quiet_start": get_value('config', 'QUIET_START', '21:00'),
         "quiet_end": get_value('config', 'QUIET_END', '07:00'),
         "quiet_volume": get_value('config', 'QUIET_VOLUME', '10'),
@@ -359,10 +361,11 @@ async def api_config_field(payload: dict):
 
 @app.get("/api/prayer-outputs")
 async def api_get_prayer_outputs():
-    """Get speaker config and volumes per prayer."""
+    """Get speaker config, volumes and alert config per prayer."""
     return {
         "outputs": get_prayer_outputs(),
         "volumes": get_all_prayer_volumes(),
+        "alerts": get_all_alert_config(),
     }
 
 
@@ -371,10 +374,17 @@ async def api_set_prayer_outputs(payload: dict):
     """Save speaker config per prayer. Expects {outputs: {prayer: [{id, name}]}, volumes: {prayer: int}}."""
     outputs = payload.get('outputs', {})
     volumes = payload.get('volumes', {})
+    alerts = payload.get('alerts', {})
     for prayer, outs in outputs.items():
         set_prayer_outputs(prayer, outs)
     for prayer, vol in volumes.items():
         set_prayer_volume(prayer, vol)
+    for prayer, cfg in alerts.items():
+        if isinstance(cfg, dict):
+            set_alert_enabled(prayer, cfg.get('enabled', False))
+            set_alert_delay(prayer, cfg.get('delay', 0))
+        else:
+            set_alert_enabled(prayer, cfg)
     return {"success": True}
 
 
@@ -464,6 +474,32 @@ async def api_delete_adhan():
     if adhan_file and os.path.exists(adhan_file):
         os.remove(adhan_file)
     set_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3')
+    return {"success": True}
+
+
+@app.post("/api/upload-alert")
+async def api_upload_alert(file: UploadFile = File(...)):
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_AUDIO:
+        raise HTTPException(status_code=400, detail=f"Format non supporté ({ext}). Formats acceptés : {', '.join(ALLOWED_AUDIO)}")
+
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    dest = os.path.join(MEDIA_DIR, f"alert{ext}")
+
+    with open(dest, 'wb') as f:
+        content = await file.read()
+        f.write(content)
+
+    set_value('owntone', 'ALERT_FILE', dest)
+    return {"success": True, "filename": file.filename, "path": dest}
+
+
+@app.delete("/api/upload-alert")
+async def api_delete_alert():
+    alert_file = get_value('owntone', 'ALERT_FILE', '')
+    if alert_file and os.path.exists(alert_file):
+        os.remove(alert_file)
+    set_value('owntone', 'ALERT_FILE', '/srv/media/alert.mp3')
     return {"success": True}
 
 
