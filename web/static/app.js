@@ -306,7 +306,7 @@ function renderPrayers(data) {
   currentSalat = data.current_salat || null;
 
   list.innerHTML = data.prayers.map(p => `
-    <div class="prayer-item ${p.status}" data-prayer="${p.name}" onclick="openTracking('${p.name}')">
+    <div class="prayer-item ${p.status}${p.name === currentSalat && p.status !== 'current' ? ' current' : ''}" data-prayer="${p.name}" onclick="openTracking('${p.name}')">
       <span class="prayer-name">${PHONETIC[p.name] || p.name}</span>
       <span class="prayer-time">${p.adhan}</span>
       <span class="prayer-iqama">
