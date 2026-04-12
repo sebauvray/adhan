@@ -164,21 +164,19 @@
         });
 
         let html = `<div class="heatmap-streak">Serie en cours : <strong>🔥 ${streak} jour${streak > 1 ? 's' : ''}</strong></div>`;
-        html += `<div class="heatmap-grid" style="grid-template-columns: 20px repeat(${weeks.length}, 1fr)">`;
+        html += `<div class="heatmap-grid" style="grid-template-columns: 20px repeat(${weeks.length}, 12px)">`;
         html += `<div class="heatmap-months" style="grid-column: 2 / -1; display:grid; grid-template-columns:subgrid">${monthLabels}</div>`;
 
-        // Day labels
+        // Day labels — rows: Mon, Tue, Wed, Thu, Fri, Sat, Sun
         const dayLabels = ['', 'L', '', 'M', '', 'V', ''];
         for (let row = 0; row < 7; row++) {
           html += `<span class="heatmap-day-label">${dayLabels[row]}</span>`;
+          const targetDay = row < 6 ? row + 1 : 0;
           for (const w of weeks) {
-            const cell = w.find(d => d.day === (row === 0 ? 1 : row === 1 ? 2 : row === 2 ? 3 : row === 3 ? 4 : row === 4 ? 5 : row === 5 ? 6 : 0));
-            // Remap: row 0=Mon(1), row 1=Tue(2), ..., row 5=Sat(6), row 6=Sun(0)
-            const targetDay = row < 6 ? row + 1 : 0;
-            const cell2 = w.find(d => d.day === targetDay);
-            if (cell2) {
-              const level = cell2.count === 0 ? 0 : cell2.count <= 1 ? 1 : cell2.count <= 2 ? 2 : cell2.count <= 3 ? 3 : 4;
-              html += `<span class="heatmap-cell level-${level}" title="${cell2.date}: ${cell2.count}/5 prieres"></span>`;
+            const cell = w.find(d => d.day === targetDay);
+            if (cell) {
+              const level = cell.count === 0 ? 0 : cell.count <= 1 ? 1 : cell.count <= 2 ? 2 : cell.count <= 3 ? 3 : 4;
+              html += `<span class="heatmap-cell level-${level}"><span class="heatmap-tooltip">${cell.count}/5 prieres — ${cell.date}</span></span>`;
             } else {
               html += `<span class="heatmap-cell empty"></span>`;
             }

@@ -1276,9 +1276,9 @@ body.settings-page {
 
 .heatmap-grid {
   display: grid;
-  gap: 2px;
-  grid-auto-flow: column;
+  gap: 3px;
   overflow-x: auto;
+  padding: 0.5rem 0;
 }
 
 .heatmap-months {
@@ -1297,11 +1297,31 @@ body.settings-page {
 }
 
 .heatmap-cell {
-  width: 100%;
-  aspect-ratio: 1;
+  width: 12px;
+  height: 12px;
   border-radius: 2px;
-  min-width: 8px;
-  max-width: 14px;
+  position: relative;
+  cursor: pointer;
+}
+
+.heatmap-cell .heatmap-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #24292f;
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.heatmap-cell:hover .heatmap-tooltip {
+  display: block;
 }
 
 .heatmap-cell.empty { background: transparent; }
@@ -1348,8 +1368,8 @@ body.settings-page {
     font-size: 0.85rem;
   }
   .heatmap-cell {
-    min-width: 10px;
-    max-width: 14px;
+    width: 10px;
+    height: 10px;
   }
   .emoji-picker {
     max-height: 250px;
