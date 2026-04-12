@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS prayer_logs (
     user_id    INTEGER NOT NULL,
     prayer     TEXT    NOT NULL,
     date       TEXT    NOT NULL,
-    created_at TEXT    DEFAULT (datetime('now')),
+    created_at TEXT    DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (user_id, prayer, date)
 );

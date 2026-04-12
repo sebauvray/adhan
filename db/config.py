@@ -409,11 +409,11 @@ def get_prayer_stats(user_id=None, period='month'):
 
 
 def get_user_streak(user_id):
-    """Get current streak (consecutive days with at least one prayer)."""
+    """Get current streak (consecutive days with all 5 prayers logged)."""
     try:
         conn = _connect()
         cur = conn.execute(
-            "SELECT DISTINCT date FROM prayer_logs WHERE user_id = ? ORDER BY date DESC",
+            "SELECT date FROM prayer_logs WHERE user_id = ? GROUP BY date HAVING COUNT(*) = 5 ORDER BY date DESC",
             (user_id,)
         )
         dates = [r[0] for r in cur.fetchall()]
@@ -424,7 +424,15 @@ def get_user_streak(user_id):
 
         from datetime import datetime, timedelta
         streak = 0
-        expected = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now().strftime('%Y-%m-%d')
+        yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        # Start from today, or yesterday if not all 5 done today yet
+        if dates[0] == today:
+            expected = today
+        elif dates[0] == yesterday:
+            expected = yesterday
+        else:
+            return 0
         for d in dates:
             if d == expected:
                 streak += 1
