@@ -79,6 +79,7 @@ let trackingUsers = [];
 let trackingLogs = {};
 let activePrayer = null;
 let prayerStatuses = {};
+let currentSalat = null;
 let sunriseTime = null;
 
 async function fetchTrackingData() {
@@ -119,6 +120,7 @@ function updatePrayerBadges() {
 }
 
 function isPrayerLate(prayer) {
+  if (prayer === currentSalat) return false;
   if (prayer === 'Fajr' && sunriseTime) {
     const now = new Date();
     const [h, m] = sunriseTime.split(':').map(Number);
@@ -140,7 +142,7 @@ function showWarning() {
 }
 
 function openTracking(prayer) {
-  if (prayerStatuses[prayer] === 'upcoming') {
+  if (prayerStatuses[prayer] === 'upcoming' && prayer !== currentSalat) {
     showWarning();
     return;
   }
@@ -301,6 +303,7 @@ function renderPrayers(data) {
   if (!list || !data.prayers) return;
 
   data.prayers.forEach(p => { prayerStatuses[p.name] = p.status; });
+  currentSalat = data.current_salat || null;
 
   list.innerHTML = data.prayers.map(p => `
     <div class="prayer-item ${p.status}" data-prayer="${p.name}" onclick="openTracking('${p.name}')">

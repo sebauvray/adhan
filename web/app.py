@@ -103,11 +103,13 @@ async def api_prayers():
     # Read today's prayers from SQLite
     prayers_list = get_prayer_times_for_date(now.strftime('%Y-%m-%d'))
 
-    # After Isha, show tomorrow's prayers
+    # After Isha, show tomorrow's prayers (Isha remains trackable via current_salat)
+    current_salat = None
     if prayers_list:
         last_prayer = prayers_list[-1]
         lh, lm = map(int, last_prayer['adhan'].split(':'))
         if current_time > dtime(lh, lm):
+            current_salat = last_prayer['name']
             tomorrow = (now + timedelta(days=1)).strftime('%Y-%m-%d')
             tomorrow_prayers = get_prayer_times_for_date(tomorrow)
             if tomorrow_prayers:
@@ -156,7 +158,18 @@ async def api_prayers():
         first['status'] = 'upcoming'
         next_prayer = first
 
-    return {"prayers": result, "next": next_prayer}
+    # If not set by the Isha switch, use the current prayer from statuses
+    if not current_salat:
+        for p in result:
+            if p['status'] == 'current':
+                current_salat = p['name']
+                break
+
+    # Between midnight and Fajr: still in Isha window from previous day
+    if not current_salat and result and last_passed_idx == -1:
+        current_salat = 'Isha'
+
+    return {"prayers": result, "next": next_prayer, "current_salat": current_salat}
 
 
 @app.get("/api/next-prayer")
