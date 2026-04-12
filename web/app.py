@@ -75,14 +75,14 @@ async def setup_page(request: Request):
 async def settings_page(request: Request):
     if not is_configured():
         return RedirectResponse("/setup")
-    return templates.TemplateResponse(request, "settings.html")
+    return templates.TemplateResponse(request, "settings.html", {"title": "Paramètres", "subtitle": "Sauvegarde automatique"})
 
 
 @app.get("/stats", response_class=HTMLResponse)
 async def stats_page(request: Request):
     if not is_configured():
         return RedirectResponse("/setup")
-    return templates.TemplateResponse(request, "stats.html")
+    return templates.TemplateResponse(request, "stats.html", {"title": "Statistiques", "subtitle": "Suivi des prieres"})
 
 
 # --- API ---

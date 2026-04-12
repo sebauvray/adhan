@@ -495,11 +495,20 @@ body.settings-page {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 1rem 1.2rem;
   position: relative;
   z-index: 2;
 }
+
+.header-left, .header-right {
+  position: absolute;
+}
+
+.header-left { left: 1.2rem; }
+.header-right { right: 1.2rem; }
+
+.header-center { text-align: center; }
 
 .settings-content {
   flex: 1;
@@ -630,6 +639,8 @@ body.settings-page {
 /* Settings Desktop */
 @media (min-width: 769px) {
   .settings-header { padding: 1.5rem 3rem; }
+  .header-left { left: 3rem; }
+  .header-right { right: 3rem; }
   .settings-content { flex-direction: row; }
   .settings-left { padding: 1.5rem 3rem; }
   .settings-right { padding: 1.5rem 2.5rem; }
