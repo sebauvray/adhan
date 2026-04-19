@@ -92,38 +92,105 @@ async def api_status():
     return {"configured": is_configured()}
 
 
+def _compute_active_date(now: datetime):
+    """Active date = today calendar + 1 if today's Isha already passed, else today calendar."""
+    today_cal = now.date()
+    today_prayers = get_prayer_times_for_date(today_cal.strftime('%Y-%m-%d'))
+    if today_prayers:
+        isha = next((p for p in today_prayers if p['name'] == 'Isha'), None)
+        if isha:
+            ih, im = map(int, isha['adhan'].split(':'))
+            if now.time() > dtime(ih, im):
+                return today_cal + timedelta(days=1)
+    return today_cal
+
+
+def _fajr_passed(now: datetime, target_date) -> bool:
+    """True if Fajr of target_date has passed (now > Fajr)."""
+    prayers = get_prayer_times_for_date(target_date.strftime('%Y-%m-%d'))
+    if not prayers:
+        return False
+    fajr = next((p for p in prayers if p['name'] == 'Fajr'), None)
+    if not fajr:
+        return False
+    fh, fm = map(int, fajr['adhan'].split(':'))
+    fajr_dt = datetime.combine(target_date, dtime(fh, fm))
+    return now >= fajr_dt
+
+
+def _can_edit(prayer: str, log_date_str: str) -> bool:
+    """Server-side guard: can this prayer/date pair be logged right now?"""
+    now = datetime.now()
+    active_date = _compute_active_date(now)
+    previous_date = active_date - timedelta(days=1)
+    log_date = datetime.strptime(log_date_str, '%Y-%m-%d').date()
+    allow_prev = get_value('config', 'ALLOW_PREVIOUS_DAY', 'false') == 'true'
+
+    if log_date == active_date:
+        # Logging a prayer of the active day: must be past (or current)
+        prayers = get_prayer_times_for_date(active_date.strftime('%Y-%m-%d'))
+        target = next((p for p in prayers if p['name'] == prayer), None)
+        if not target:
+            return False
+        h, m = map(int, target['adhan'].split(':'))
+        target_dt = datetime.combine(active_date, dtime(h, m))
+        return now >= target_dt
+
+    if log_date == previous_date:
+        # Carry-over only allowed before Fajr of active_date
+        if _fajr_passed(now, active_date):
+            return False
+        if allow_prev:
+            return True
+        # OFF: only Isha carry-over allowed
+        return prayer == 'Isha'
+
+    return False
+
+
 @app.get("/api/prayers")
-async def api_prayers():
+async def api_prayers(date: Optional[str] = None):
     if not is_configured():
         raise HTTPException(status_code=503, detail="Non configuré")
 
     now = datetime.now()
     current_time = now.time()
 
-    # Read today's prayers from SQLite
-    prayers_list = get_prayer_times_for_date(now.strftime('%Y-%m-%d'))
+    active_date = _compute_active_date(now)
+    previous_date = active_date - timedelta(days=1)
+    allow_prev = get_value('config', 'ALLOW_PREVIOUS_DAY', 'false') == 'true'
+    can_view_previous = allow_prev and not _fajr_passed(now, active_date)
 
-    # After Isha, show tomorrow's prayers (Isha remains trackable via current_salat)
-    current_salat = None
-    if prayers_list:
-        last_prayer = prayers_list[-1]
-        lh, lm = map(int, last_prayer['adhan'].split(':'))
-        if current_time > dtime(lh, lm):
-            current_salat = last_prayer['name']
-            tomorrow = (now + timedelta(days=1)).strftime('%Y-%m-%d')
-            tomorrow_prayers = get_prayer_times_for_date(tomorrow)
-            if tomorrow_prayers:
-                prayers_list = tomorrow_prayers
+    # Determine view_date (explicit param or default to active_date)
+    if date:
+        try:
+            view_date = datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Date invalide")
+        if view_date == previous_date and not can_view_previous:
+            raise HTTPException(status_code=403, detail="Navigation interdite")
+        if view_date not in (active_date, previous_date):
+            raise HTTPException(status_code=403, detail="Date hors plage")
+    else:
+        view_date = active_date
 
+    prayers_list = get_prayer_times_for_date(view_date.strftime('%Y-%m-%d'))
     if not prayers_list:
         raise HTTPException(status_code=503, detail="Horaires non disponibles")
 
-    # Déterminer le statut de chaque prière
+    is_today_calendar = view_date == now.date()
+
+    # Status per prayer
     last_passed_idx = -1
-    for i, p in enumerate(prayers_list):
-        h, m = map(int, p['adhan'].split(':'))
-        if dtime(h, m) <= current_time:
-            last_passed_idx = i
+    if is_today_calendar:
+        for i, p in enumerate(prayers_list):
+            h, m = map(int, p['adhan'].split(':'))
+            if dtime(h, m) <= current_time:
+                last_passed_idx = i
+    elif view_date < now.date():
+        # Viewing a past calendar day: all prayers are past
+        last_passed_idx = len(prayers_list) - 1
+    # If view_date > today_calendar: all upcoming (last_passed_idx stays -1)
 
     result = []
     for i, p in enumerate(prayers_list):
@@ -133,43 +200,67 @@ async def api_prayers():
             status = 'current'
         else:
             status = 'upcoming'
-
         result.append({
             **p,
             'arabic': ARABIC.get(p['name'], ''),
             'status': status,
         })
 
-    # Prochaine prière
+    # Next prayer (across day boundary if needed)
     next_prayer = None
     for p in result:
         if p['status'] == 'upcoming':
             next_prayer = dict(p)
             h, m = map(int, p['adhan'].split(':'))
-            next_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
-            next_prayer['seconds_until'] = int((next_dt - now).total_seconds())
+            next_dt = datetime.combine(view_date, dtime(h, m))
+            next_prayer['seconds_until'] = max(0, int((next_dt - now).total_seconds()))
             break
 
     if not next_prayer and result:
-        first = dict(result[0])
-        h, m = map(int, first['adhan'].split(':'))
-        next_dt = (now + timedelta(days=1)).replace(hour=h, minute=m, second=0, microsecond=0)
-        first['seconds_until'] = int((next_dt - now).total_seconds())
-        first['status'] = 'upcoming'
-        next_prayer = first
+        # Roll over to next day's first prayer
+        next_day = view_date + timedelta(days=1)
+        next_day_prayers = get_prayer_times_for_date(next_day.strftime('%Y-%m-%d'))
+        if next_day_prayers:
+            first = dict(next_day_prayers[0])
+            first['arabic'] = ARABIC.get(first['name'], '')
+            h, m = map(int, first['adhan'].split(':'))
+            next_dt = datetime.combine(next_day, dtime(h, m))
+            first['seconds_until'] = max(0, int((next_dt - now).total_seconds()))
+            first['status'] = 'upcoming'
+            next_prayer = first
 
-    # If not set by the Isha switch, use the current prayer from statuses
-    if not current_salat:
-        for p in result:
-            if p['status'] == 'current':
-                current_salat = p['name']
-                break
+    # Determine current_salat + current_salat_date (the date the current prayer belongs to for logging)
+    current_salat = None
+    current_salat_date = None
+    for p in result:
+        if p['status'] == 'current':
+            current_salat = p['name']
+            current_salat_date = view_date.strftime('%Y-%m-%d')
+            break
 
-    # Between midnight and Fajr: still in Isha window from previous day
-    if not current_salat and result and last_passed_idx == -1:
-        current_salat = 'Isha'
+    # Carry-over: viewing active_date but it's all upcoming (no Fajr passed yet) → Isha of previous_date
+    if (not current_salat and view_date == active_date
+            and last_passed_idx == -1 and not _fajr_passed(now, active_date)):
+        prev_prayers = get_prayer_times_for_date(previous_date.strftime('%Y-%m-%d'))
+        prev_isha = next((p for p in prev_prayers if p['name'] == 'Isha'), None) if prev_prayers else None
+        if prev_isha:
+            ph, pm = map(int, prev_isha['adhan'].split(':'))
+            prev_isha_dt = datetime.combine(previous_date, dtime(ph, pm))
+            if now >= prev_isha_dt:
+                current_salat = 'Isha'
+                current_salat_date = previous_date.strftime('%Y-%m-%d')
 
-    return {"prayers": result, "next": next_prayer, "current_salat": current_salat}
+    return {
+        "prayers": result,
+        "next": next_prayer,
+        "current_salat": current_salat,
+        "current_salat_date": current_salat_date,
+        "view_date": view_date.strftime('%Y-%m-%d'),
+        "active_date": active_date.strftime('%Y-%m-%d'),
+        "previous_date": previous_date.strftime('%Y-%m-%d'),
+        "can_view_previous": can_view_previous,
+        "allow_previous_day": allow_prev,
+    }
 
 
 @app.get("/api/next-prayer")
@@ -246,6 +337,7 @@ async def api_get_config():
         "quiet_start": get_value('config', 'QUIET_START', '21:00'),
         "quiet_end": get_value('config', 'QUIET_END', '07:00'),
         "quiet_volume": get_value('config', 'QUIET_VOLUME', '10'),
+        "allow_previous_day": get_value('config', 'ALLOW_PREVIOUS_DAY', 'false'),
         "homepods": get_homepods(),
     }
 
@@ -558,6 +650,8 @@ async def api_log_prayer(payload: dict):
     date = payload.get('date')
     if not all([user_id, prayer, date]):
         raise HTTPException(status_code=400, detail="user_id, prayer et date requis")
+    if not _can_edit(prayer, date):
+        raise HTTPException(status_code=403, detail="Validation interdite pour cette prière")
     log_prayer(user_id, prayer, date)
     return {"success": True}
 
@@ -569,6 +663,8 @@ async def api_unlog_prayer(payload: dict):
     date = payload.get('date')
     if not all([user_id, prayer, date]):
         raise HTTPException(status_code=400, detail="user_id, prayer et date requis")
+    if not _can_edit(prayer, date):
+        raise HTTPException(status_code=403, detail="Validation interdite pour cette prière")
     unlog_prayer(user_id, prayer, date)
     return {"success": True}
 
