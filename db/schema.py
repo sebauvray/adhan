@@ -144,6 +144,7 @@ def _ensure_defaults(conn):
             'QUIET_START': '21:00',
             'QUIET_END': '07:00',
             'QUIET_VOLUME': '10',
+            'ALLOW_PREVIOUS_DAY': 'false',
         },
     }
     for table, values in defaults.items():
