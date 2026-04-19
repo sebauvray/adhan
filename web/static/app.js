@@ -76,22 +76,49 @@ function updateCountdown() {
 /* --- Prayer Tracking --- */
 
 let trackingUsers = [];
-let trackingLogs = {};
+let logsByDate = {};
 let activePrayer = null;
 let prayerStatuses = {};
 let currentSalat = null;
+let currentSalatDate = null;
 let sunriseTime = null;
+let viewDate = null;
+let activeDate = null;
+let previousDate = null;
+let canViewPrevious = false;
+
+function logDateFor(prayer) {
+  if (prayer === currentSalat && viewDate === activeDate && currentSalatDate) {
+    return currentSalatDate;
+  }
+  return viewDate;
+}
+
+function loggedIdsFor(prayer) {
+  const date = logDateFor(prayer);
+  return ((logsByDate[date] || {})[prayer]) || [];
+}
 
 async function fetchTrackingData() {
+  if (!viewDate) return;
   try {
-    const date = new Date().toISOString().slice(0, 10);
-    const resp = await fetch('/api/prayer-logs/' + date);
-    if (resp.ok) {
-      const data = await resp.json();
-      trackingUsers = data.users || [];
-      trackingLogs = data.logs || {};
-      updatePrayerBadges();
+    const datesToFetch = [viewDate];
+    // Carry-over: also fetch previous_date logs so the carry-over Isha badge stays correct
+    if (viewDate === activeDate && currentSalatDate && currentSalatDate !== viewDate) {
+      datesToFetch.push(currentSalatDate);
     }
+    const results = await Promise.all(datesToFetch.map(d => fetch('/api/prayer-logs/' + d)));
+    const next = {};
+    let users = trackingUsers;
+    for (let i = 0; i < results.length; i++) {
+      if (!results[i].ok) continue;
+      const data = await results[i].json();
+      users = data.users || users;
+      next[datesToFetch[i]] = data.logs || {};
+    }
+    trackingUsers = users;
+    logsByDate = next;
+    updatePrayerBadges();
   } catch (e) {
     console.error('Erreur fetch tracking:', e);
   }
@@ -102,16 +129,16 @@ function updatePrayerBadges() {
   document.querySelectorAll('.prayer-item').forEach(item => {
     const prayer = item.dataset.prayer;
     if (!prayer) return;
-    const count = (trackingLogs[prayer] || []).length;
+    const ids = loggedIdsFor(prayer);
     let badge = item.querySelector('.prayer-badge');
-    if (count > 0) {
+    if (ids.length > 0) {
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'prayer-badge';
         item.appendChild(badge);
       }
       badge.textContent = trackingUsers
-        .filter(u => (trackingLogs[prayer] || []).includes(u.id))
+        .filter(u => ids.includes(u.id))
         .map(u => u.emoji).join('');
     } else if (badge) {
       badge.remove();
@@ -154,7 +181,7 @@ function openTracking(prayer) {
   if (!trackingUsers.length) {
     container.innerHTML = '<p style="font-size:0.85rem;color:rgba(26,26,26,0.5);margin:1rem 0">Ajoute des utilisateurs dans les <a href="/settings" style="color:#c8a97e">Parametres</a></p>';
   } else {
-    const loggedIds = trackingLogs[prayer] || [];
+    const loggedIds = loggedIdsFor(prayer);
     let html = trackingUsers.map((u, i) => {
       const done = loggedIds.includes(u.id);
       return `<button class="tracking-avatar ${done ? 'done' : ''}" data-user="${u.id}" onclick="toggleUserPrayer(this)" style="animation-delay:${i * 0.07}s">
@@ -189,9 +216,12 @@ async function toggleUserPrayer(btn) {
   const prayer = activePrayer;
   if (!prayer) return;
 
-  const loggedIds = trackingLogs[prayer] || [];
+  const date = logDateFor(prayer);
+  const loggedIds = loggedIdsFor(prayer);
   const isDone = loggedIds.includes(userId);
-  const date = new Date().toISOString().slice(0, 10);
+
+  if (!logsByDate[date]) logsByDate[date] = {};
+  if (!logsByDate[date][prayer]) logsByDate[date][prayer] = [];
 
   if (isDone) {
     // Unlog
@@ -201,7 +231,7 @@ async function toggleUserPrayer(btn) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, prayer, date }),
       });
-      trackingLogs[prayer] = loggedIds.filter(id => id !== userId);
+      logsByDate[date][prayer] = logsByDate[date][prayer].filter(id => id !== userId);
       btn.classList.remove('done');
       btn.querySelector('.tracking-avatar-check')?.remove();
       updatePrayerBadges();
@@ -217,8 +247,7 @@ async function toggleUserPrayer(btn) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, prayer, date }),
       });
-      if (!trackingLogs[prayer]) trackingLogs[prayer] = [];
-      trackingLogs[prayer].push(userId);
+      logsByDate[date][prayer].push(userId);
       btn.classList.add('done');
       // Add check mark
       const check = document.createElement('span');
@@ -302,8 +331,15 @@ function renderPrayers(data) {
   const list = document.getElementById('prayers-list');
   if (!list || !data.prayers) return;
 
+  prayerStatuses = {};
   data.prayers.forEach(p => { prayerStatuses[p.name] = p.status; });
   currentSalat = data.current_salat || null;
+  currentSalatDate = data.current_salat_date || null;
+  viewDate = data.view_date;
+  activeDate = data.active_date;
+  previousDate = data.previous_date;
+  canViewPrevious = !!data.can_view_previous;
+  renderDayNav();
 
   list.innerHTML = data.prayers.map(p => `
     <div class="prayer-item ${p.status}${p.name === currentSalat && p.status !== 'current' ? ' current' : ''}" data-prayer="${p.name}" onclick="openTracking('${p.name}')">
@@ -332,16 +368,52 @@ function renderPrayers(data) {
   }
 }
 
-async function fetchPrayers() {
+async function fetchPrayers(opts = {}) {
   try {
-    const resp = await fetch('/api/prayers');
+    const targetDate = opts.date || viewDate;
+    const url = targetDate ? '/api/prayers?date=' + targetDate : '/api/prayers';
+    let resp = await fetch(url);
+    if (resp.status === 403) {
+      // viewDate no longer reachable (e.g. day rolled over) — reset to default
+      viewDate = null;
+      resp = await fetch('/api/prayers');
+    }
     if (resp.ok) {
       const data = await resp.json();
       renderPrayers(data);
-      updatePrayerBadges();
+      await fetchTrackingData();
     }
   } catch (e) {
     console.error('Erreur fetch prayers:', e);
+  }
+}
+
+function fmtDayLabel(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function renderDayNav() {
+  const nav = document.getElementById('prayers-day-nav');
+  if (!nav) return;
+  const showPrev = canViewPrevious && viewDate === activeDate;
+  const showNext = viewDate === previousDate;
+  if (!showPrev && !showNext) {
+    nav.style.display = 'none';
+    return;
+  }
+  nav.style.display = 'flex';
+  document.getElementById('day-nav-prev').style.visibility = showPrev ? 'visible' : 'hidden';
+  document.getElementById('day-nav-next').style.visibility = showNext ? 'visible' : 'hidden';
+  document.getElementById('day-nav-label').textContent = fmtDayLabel(viewDate);
+}
+
+function navigateDay(delta) {
+  if (delta < 0 && canViewPrevious && viewDate === activeDate) {
+    fetchPrayers({ date: previousDate });
+  } else if (delta > 0 && viewDate === previousDate) {
+    fetchPrayers({ date: activeDate });
   }
 }
 
@@ -408,9 +480,8 @@ function initDashboard() {
   setInterval(updateClock, 1000);
   setInterval(updateCountdown, 1000);
 
-  fetchPrayers().then(() => fetchTrackingData());
+  fetchPrayers();
   setInterval(fetchPrayers, 60000);
-  setInterval(fetchTrackingData, 60000);
 
   fetchWeather();
   setInterval(fetchWeather, 1800000);

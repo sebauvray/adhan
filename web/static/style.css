@@ -105,7 +105,38 @@ body.dashboard-page {
   overflow: hidden;
   container-type: size;
   container-name: prayers;
+  position: relative;
 }
+
+.prayers-day-nav {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-dark-muted);
+  z-index: 3;
+}
+
+.day-nav-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.day-nav-btn:hover { background: rgba(0, 0, 0, 0.1); }
+.day-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.day-nav-label { font-weight: 600; min-width: 80px; text-align: center; }
 
 .dash-next {
   flex: 3;
