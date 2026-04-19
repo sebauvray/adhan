@@ -83,6 +83,16 @@
         </div>
 
         <div class="form-section">
+          <h2>Suivi des prières</h2>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="allow_previous_day" data-table="config" data-key="ALLOW_PREVIOUS_DAY">
+              Autoriser la validation des prières de la veille (jusqu'au Fajr)
+            </label>
+          </div>
+        </div>
+
+        <div class="form-section">
           <h2>Utilisateurs</h2>
           <div id="users-list"></div>
           <div class="user-add-form">
@@ -222,6 +232,10 @@
           document.getElementById('sound-config').style.display = toggle.checked ? 'block' : 'none';
         }
 
+        // Allow-previous-day checkbox
+        const prevToggle = document.getElementById('allow_previous_day');
+        if (prevToggle) prevToggle.checked = data.allow_previous_day === 'true';
+
         // Upload file state
         const file = data.adhan_file || '';
         if (file && file !== '/srv/media/adhan.mp3') showCustomFile(file.split('/').pop());
@@ -256,6 +270,14 @@
         toggle.addEventListener('change', async () => {
           config.style.display = toggle.checked ? 'block' : 'none';
           await saveField('config', 'SOUND_ENABLED', toggle.checked ? 'true' : 'false');
+        });
+      }
+
+      const prevToggle = document.getElementById('allow_previous_day');
+      if (prevToggle) {
+        prevToggle.addEventListener('change', async () => {
+          await saveField('config', 'ALLOW_PREVIOUS_DAY', prevToggle.checked ? 'true' : 'false');
+          showSaved(prevToggle);
         });
       }
 
