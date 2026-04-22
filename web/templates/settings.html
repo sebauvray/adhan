@@ -86,8 +86,8 @@
           <h2>Suivi des prières</h2>
           <div class="form-group">
             <label class="checkbox-label">
-              <input type="checkbox" id="allow_previous_day" data-table="config" data-key="ALLOW_PREVIOUS_DAY">
-              Autoriser la validation des prières de la veille (jusqu'au Fajr)
+              <input type="checkbox" id="multi_day_display" data-table="config" data-key="MULTI_DAY_DISPLAY">
+              Afficher plusieurs jours (veille, jour, lendemain)
             </label>
           </div>
         </div>
@@ -232,9 +232,9 @@
           document.getElementById('sound-config').style.display = toggle.checked ? 'block' : 'none';
         }
 
-        // Allow-previous-day checkbox
-        const prevToggle = document.getElementById('allow_previous_day');
-        if (prevToggle) prevToggle.checked = data.allow_previous_day === 'true';
+        // Multi-day display checkbox
+        const multiDayToggle = document.getElementById('multi_day_display');
+        if (multiDayToggle) multiDayToggle.checked = data.multi_day_display === 'true';
 
         // Upload file state
         const file = data.adhan_file || '';
@@ -273,11 +273,11 @@
         });
       }
 
-      const prevToggle = document.getElementById('allow_previous_day');
-      if (prevToggle) {
-        prevToggle.addEventListener('change', async () => {
-          await saveField('config', 'ALLOW_PREVIOUS_DAY', prevToggle.checked ? 'true' : 'false');
-          showSaved(prevToggle);
+      const multiDayToggle = document.getElementById('multi_day_display');
+      if (multiDayToggle) {
+        multiDayToggle.addEventListener('change', async () => {
+          await saveField('config', 'MULTI_DAY_DISPLAY', multiDayToggle.checked ? 'true' : 'false');
+          showSaved(multiDayToggle);
         });
       }
 

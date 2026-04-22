@@ -47,16 +47,20 @@
 
     <div class="dash-content">
       <div class="dash-prayers">
-        <div class="prayers-day-nav" id="prayers-day-nav" style="display:none">
-          <button type="button" class="day-nav-btn" id="day-nav-prev" onclick="navigateDay(-1)" title="Veille">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <span class="day-nav-label" id="day-nav-label"></span>
-          <button type="button" class="day-nav-btn" id="day-nav-next" onclick="navigateDay(1)" title="Aujourd'hui" style="visibility:hidden">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
+        <span class="day-nav-label" id="day-nav-label" style="display:none"></span>
+        <div class="prayers-stage">
+          <a href="#" class="icon-btn day-nav-arrow day-nav-arrow-prev" id="day-nav-prev" onclick="event.preventDefault();navigateDay(-1)" aria-label="Jour précédent" style="display:none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15.75 19.5 8.25 12l7.5-7.5"/>
+            </svg>
+          </a>
+          <div class="prayers-list" id="prayers-list"></div>
+          <a href="#" class="icon-btn day-nav-arrow day-nav-arrow-next" id="day-nav-next" onclick="event.preventDefault();navigateDay(1)" aria-label="Jour suivant" style="display:none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m8.25 4.5 7.5 7.5-7.5 7.5"/>
+            </svg>
+          </a>
         </div>
-        <div class="prayers-list" id="prayers-list"></div>
       </div>
       <div class="dash-next">
         <div class="next-prayer" id="next-prayer">

@@ -108,35 +108,36 @@ body.dashboard-page {
   position: relative;
 }
 
-.prayers-day-nav {
-  position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
+.prayers-stage {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: var(--text-dark-muted);
-  z-index: 3;
-}
-
-.day-nav-btn {
-  background: rgba(0, 0, 0, 0.05);
-  border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  color: var(--text-dark);
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  max-height: 100%;
+  width: 100%;
 }
 
-.day-nav-btn:hover { background: rgba(0, 0, 0, 0.1); }
-.day-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.day-nav-label { font-weight: 600; min-width: 80px; text-align: center; }
+.day-nav-arrow {
+  position: absolute;
+  z-index: 3;
+  padding: 0.3rem;
+  line-height: 0;
+}
+.day-nav-arrow-prev { top: 0; left: 0; }
+.day-nav-arrow-next { bottom: 0; right: 0; }
+
+.day-nav-label {
+  position: absolute;
+  top: 0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 600;
+  z-index: 3;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
 
 .dash-next {
   flex: 3;
@@ -450,7 +451,10 @@ body.dashboard-page {
   .clock__date { font-size: 0.85rem; margin-bottom: 0.3rem; }
   .clock__time { font-size: 2.8rem; }
 
-  .prayers-list { gap: clamp(0.3rem, 2vh, 1.2rem); width: 55%; }
+  .prayers-stage { width: 55%; }
+  .prayers-list { gap: clamp(0.3rem, 2vh, 1.2rem); width: 100%; }
+  .day-nav-arrow-prev { top: 0; left: -2.5rem; }
+  .day-nav-arrow-next { bottom: 0; right: -2.5rem; }
   .prayer-item { width: 170px; gap: 0.25rem; padding: 0; flex-shrink: 1; min-height: 0; }
   .prayer-item:nth-child(1) { margin-left: 60%; }
   .prayer-item:nth-child(2) { margin-left: 50%; }

@@ -56,8 +56,7 @@ function updateCountdown() {
   if (!el) return;
 
   if (secondsUntilNext <= 0) {
-    // Prayer time reached — refresh data immediately
-    fetchPrayers();
+    if (viewDate === today) fetchPrayers();
     return;
   }
 
@@ -80,44 +79,26 @@ let logsByDate = {};
 let activePrayer = null;
 let prayerStatuses = {};
 let currentSalat = null;
-let currentSalatDate = null;
 let sunriseTime = null;
 let viewDate = null;
-let activeDate = null;
-let previousDate = null;
-let canViewPrevious = false;
-
-function logDateFor(prayer) {
-  if (prayer === currentSalat && viewDate === activeDate && currentSalatDate) {
-    return currentSalatDate;
-  }
-  return viewDate;
-}
+let today = null;
+let yesterday = null;
+let tomorrow = null;
+let canViewPrev = false;
+let canViewNext = false;
 
 function loggedIdsFor(prayer) {
-  const date = logDateFor(prayer);
-  return ((logsByDate[date] || {})[prayer]) || [];
+  return ((logsByDate[viewDate] || {})[prayer]) || [];
 }
 
 async function fetchTrackingData() {
   if (!viewDate) return;
   try {
-    const datesToFetch = [viewDate];
-    // Carry-over: also fetch previous_date logs so the carry-over Isha badge stays correct
-    if (viewDate === activeDate && currentSalatDate && currentSalatDate !== viewDate) {
-      datesToFetch.push(currentSalatDate);
-    }
-    const results = await Promise.all(datesToFetch.map(d => fetch('/api/prayer-logs/' + d)));
-    const next = {};
-    let users = trackingUsers;
-    for (let i = 0; i < results.length; i++) {
-      if (!results[i].ok) continue;
-      const data = await results[i].json();
-      users = data.users || users;
-      next[datesToFetch[i]] = data.logs || {};
-    }
-    trackingUsers = users;
-    logsByDate = next;
+    const resp = await fetch('/api/prayer-logs/' + viewDate);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    trackingUsers = data.users || trackingUsers;
+    logsByDate = { [viewDate]: data.logs || {} };
     updatePrayerBadges();
   } catch (e) {
     console.error('Erreur fetch tracking:', e);
@@ -216,7 +197,7 @@ async function toggleUserPrayer(btn) {
   const prayer = activePrayer;
   if (!prayer) return;
 
-  const date = logDateFor(prayer);
+  const date = viewDate;
   const loggedIds = loggedIdsFor(prayer);
   const isDone = loggedIds.includes(userId);
 
@@ -334,15 +315,16 @@ function renderPrayers(data) {
   prayerStatuses = {};
   data.prayers.forEach(p => { prayerStatuses[p.name] = p.status; });
   currentSalat = data.current_salat || null;
-  currentSalatDate = data.current_salat_date || null;
   viewDate = data.view_date;
-  activeDate = data.active_date;
-  previousDate = data.previous_date;
-  canViewPrevious = !!data.can_view_previous;
+  today = data.today;
+  yesterday = data.yesterday;
+  tomorrow = data.tomorrow;
+  canViewPrev = !!data.can_view_previous;
+  canViewNext = !!data.can_view_next;
   renderDayNav();
 
   list.innerHTML = data.prayers.map(p => `
-    <div class="prayer-item ${p.status}${p.name === currentSalat && p.status !== 'current' ? ' current' : ''}" data-prayer="${p.name}" onclick="openTracking('${p.name}')">
+    <div class="prayer-item ${p.status}" data-prayer="${p.name}" onclick="openTracking('${p.name}')">
       <span class="prayer-name">${PHONETIC[p.name] || p.name}</span>
       <span class="prayer-time">${p.adhan}</span>
       <span class="prayer-iqama">
@@ -395,26 +377,32 @@ function fmtDayLabel(dateStr) {
 }
 
 function renderDayNav() {
-  const nav = document.getElementById('prayers-day-nav');
-  if (!nav) return;
-  const showPrev = canViewPrevious && viewDate === activeDate;
-  const showNext = viewDate === previousDate;
-  if (!showPrev && !showNext) {
-    nav.style.display = 'none';
-    return;
+  const prev = document.getElementById('day-nav-prev');
+  const next = document.getElementById('day-nav-next');
+  const label = document.getElementById('day-nav-label');
+  if (!prev || !next || !label) return;
+
+  prev.style.display = canViewPrev ? '' : 'none';
+  next.style.display = canViewNext ? '' : 'none';
+
+  if (viewDate !== today) {
+    label.textContent = fmtDayLabel(viewDate);
+    label.style.display = '';
+  } else {
+    label.style.display = 'none';
   }
-  nav.style.display = 'flex';
-  document.getElementById('day-nav-prev').style.visibility = showPrev ? 'visible' : 'hidden';
-  document.getElementById('day-nav-next').style.visibility = showNext ? 'visible' : 'hidden';
-  document.getElementById('day-nav-label').textContent = fmtDayLabel(viewDate);
 }
 
 function navigateDay(delta) {
-  if (delta < 0 && canViewPrevious && viewDate === activeDate) {
-    fetchPrayers({ date: previousDate });
-  } else if (delta > 0 && viewDate === previousDate) {
-    fetchPrayers({ date: activeDate });
+  let target = null;
+  if (delta < 0 && canViewPrev) {
+    if (viewDate === today) target = yesterday;
+    else if (viewDate === tomorrow) target = today;
+  } else if (delta > 0 && canViewNext) {
+    if (viewDate === yesterday) target = today;
+    else if (viewDate === today) target = tomorrow;
   }
+  if (target) fetchPrayers({ date: target });
 }
 
 /* --- Weather --- */
