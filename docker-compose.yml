@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: web/dockerfile
-    container_name: adhan-web
+    container_name: ${CONTAINER_NAME_WEB:-adhan-web}
     ports:
       - "${WEB_PORT:-8080}:8080"
     extra_hosts:
@@ -43,7 +43,7 @@ services:
     restart: always
 
   owntone:
-    container_name: owntone
+    container_name: ${CONTAINER_NAME_OWNTONE:-owntone}
     image: owntone/owntone:latest
     network_mode: host
     privileged: true
