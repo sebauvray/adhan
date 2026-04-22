@@ -470,6 +470,17 @@ body.dashboard-page {
 
 }
 
+/* Dashboard medium-compact: prayers container under 800px tall (iPad landscape, narrow desktops) */
+@container prayers (max-height: 800px) {
+  .prayers-list { gap: clamp(0.15rem, 1vh, 0.5rem); }
+  .prayer-item { gap: 0.15rem; }
+  .prayer-name { font-size: 0.85rem; }
+  .prayer-item.current .prayer-name { font-size: 1rem; }
+  .prayer-time { font-size: 1.3rem; }
+  .prayer-item.current .prayer-time { font-size: 1.5rem; }
+  .prayer-iqama { font-size: 0.6rem; padding: 0.15rem 0.45rem; }
+}
+
 /* Dashboard compact: prayers container under 500px tall */
 @container prayers (max-height: 500px) {
   .prayers-list {
