@@ -17,11 +17,13 @@ from db.schema import init_db
 from db.config import (
     get_value, set_value, get_all, get_homepods, set_homepods,
     is_configured, get_token, create_token, validate_token,
+    list_tokens, delete_token,
     get_prayer_outputs, set_prayer_outputs,
     get_all_prayer_volumes, set_prayer_volume,
     get_prayer_times_for_date,
     get_users, create_user, update_user, delete_user,
     log_prayer, unlog_prayer, get_prayer_logs_for_date,
+    get_prayer_logs_for_user_date,
     get_prayer_stats, get_user_streak,
     get_all_alert_config, set_alert_enabled, set_alert_delay,
 )
@@ -90,6 +92,31 @@ async def stats_page(request: Request):
 @app.get("/api/status")
 async def api_status():
     return {"configured": is_configured()}
+
+
+def _require_token(authorization: Optional[str], allowed_scopes: list):
+    """Validate Bearer token and check scope. Returns the token row or raises 401/403."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token requis")
+    info = validate_token(authorization[7:])
+    if not info:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    if info["scope"] not in allowed_scopes:
+        raise HTTPException(status_code=403, detail="Scope insuffisant")
+    return info
+
+
+def _optional_token(authorization: Optional[str]):
+    """Validate Bearer token if present. Returns the token row or None.
+    Raises 401 if a token is provided but invalid."""
+    if not authorization:
+        return None
+    if not authorization.startswith("Bearer "):
+        return None
+    info = validate_token(authorization[7:])
+    if not info:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    return info
 
 
 def _can_edit(prayer: str, log_date_str: str) -> bool:
@@ -344,9 +371,7 @@ async def api_setup(data: ConfigPayload):
 
 @app.post("/api/config")
 async def api_update_config(data: ConfigPayload, authorization: Optional[str] = Header(None)):
-    token = authorization.replace("Bearer ", "") if authorization else None
-    if not validate_token(token):
-        raise HTTPException(status_code=401, detail="Token invalide")
+    _require_token(authorization, ["admin"])
 
     await _save_config(data)
 
@@ -358,9 +383,7 @@ async def api_update_config(data: ConfigPayload, authorization: Optional[str] = 
 
 @app.post("/api/refresh")
 async def api_refresh(authorization: Optional[str] = Header(None)):
-    token = authorization.replace("Bearer ", "") if authorization else None
-    if not validate_token(token):
-        raise HTTPException(status_code=401, detail="Token invalide")
+    _require_token(authorization, ["admin"])
 
     subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
     return {"success": True}
@@ -593,13 +616,28 @@ async def api_delete_user(user_id: int):
 
 # --- Prayer Logs API ---
 
-@app.post("/api/prayer-log")
-async def api_log_prayer(payload: dict):
+def _resolve_log_user(payload: dict, authorization: Optional[str]) -> int:
+    """Determine which user_id to log against.
+    If a 'prayers' scoped token is present, it overrides the payload user_id.
+    Otherwise the payload user_id is used (anonymous dashboard mode or admin token)."""
+    info = _optional_token(authorization)
+    if info and info["scope"] == "prayers":
+        if not info["user_id"]:
+            raise HTTPException(status_code=400, detail="Token sans user_id")
+        return info["user_id"]
     user_id = payload.get('user_id')
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id requis")
+    return user_id
+
+
+@app.post("/api/prayer-log")
+async def api_log_prayer(payload: dict, authorization: Optional[str] = Header(None)):
+    user_id = _resolve_log_user(payload, authorization)
     prayer = payload.get('prayer')
     date = payload.get('date')
-    if not all([user_id, prayer, date]):
-        raise HTTPException(status_code=400, detail="user_id, prayer et date requis")
+    if not all([prayer, date]):
+        raise HTTPException(status_code=400, detail="prayer et date requis")
     if not _can_edit(prayer, date):
         raise HTTPException(status_code=403, detail="Validation interdite pour cette prière")
     log_prayer(user_id, prayer, date)
@@ -607,16 +645,30 @@ async def api_log_prayer(payload: dict):
 
 
 @app.delete("/api/prayer-log")
-async def api_unlog_prayer(payload: dict):
-    user_id = payload.get('user_id')
+async def api_unlog_prayer(payload: dict, authorization: Optional[str] = Header(None)):
+    user_id = _resolve_log_user(payload, authorization)
     prayer = payload.get('prayer')
     date = payload.get('date')
-    if not all([user_id, prayer, date]):
-        raise HTTPException(status_code=400, detail="user_id, prayer et date requis")
+    if not all([prayer, date]):
+        raise HTTPException(status_code=400, detail="prayer et date requis")
     if not _can_edit(prayer, date):
         raise HTTPException(status_code=403, detail="Validation interdite pour cette prière")
     unlog_prayer(user_id, prayer, date)
     return {"success": True}
+
+
+@app.get("/api/prayer-logs/me")
+async def api_get_my_prayer_logs(date: Optional[str] = None, authorization: Optional[str] = Header(None)):
+    """Get prayers logged by the authenticated user for a date (default: today)."""
+    info = _require_token(authorization, ["prayers"])
+    if not info["user_id"]:
+        raise HTTPException(status_code=400, detail="Token sans user_id")
+    log_date = date or datetime.now().strftime('%Y-%m-%d')
+    return {
+        "date": log_date,
+        "user_id": info["user_id"],
+        "prayers": get_prayer_logs_for_user_date(info["user_id"], log_date),
+    }
 
 
 @app.get("/api/prayer-logs/{date}")
@@ -644,6 +696,40 @@ async def api_stats(period: str = 'month', user_id: int = None):
             leaderboard.append({**u, "count": count, "streak": streak})
         leaderboard.sort(key=lambda x: x['count'], reverse=True)
         return {"leaderboard": leaderboard, "users": users}
+
+
+# --- Tokens API (admin only) ---
+
+@app.get("/api/tokens")
+async def api_list_tokens(authorization: Optional[str] = Header(None)):
+    _require_token(authorization, ["admin"])
+    return {"tokens": list_tokens()}
+
+
+@app.post("/api/tokens")
+async def api_create_token(payload: dict, authorization: Optional[str] = Header(None)):
+    _require_token(authorization, ["admin"])
+    scope = payload.get('scope', 'prayers')
+    if scope not in ('admin', 'prayers'):
+        raise HTTPException(status_code=400, detail="Scope invalide")
+    description = (payload.get('description') or '').strip() or 'API'
+    user_id = payload.get('user_id')
+    if scope == 'prayers':
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id requis pour scope 'prayers'")
+        if not any(u['id'] == user_id for u in get_users()):
+            raise HTTPException(status_code=400, detail="Utilisateur introuvable")
+    else:
+        user_id = None
+    token = create_token(description=description, scope=scope, user_id=user_id)
+    return {"success": True, "token": token}
+
+
+@app.delete("/api/tokens/{token_id}")
+async def api_delete_token(token_id: int, authorization: Optional[str] = Header(None)):
+    _require_token(authorization, ["admin"])
+    delete_token(token_id)
+    return {"success": True}
 
 
 @app.post("/api/validate-url")

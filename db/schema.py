@@ -49,7 +49,10 @@ CREATE TABLE IF NOT EXISTS api_tokens (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     token       TEXT    UNIQUE NOT NULL,
     description TEXT,
-    created_at  TEXT    DEFAULT (datetime('now'))
+    scope       TEXT    NOT NULL DEFAULT 'admin',
+    user_id     INTEGER,
+    created_at  TEXT    DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -172,6 +175,20 @@ def _migrate_alert_columns(conn):
         pass
 
 
+def _migrate_token_scope(conn):
+    """Add scope and user_id columns to api_tokens if missing."""
+    try:
+        cur = conn.execute("PRAGMA table_info(api_tokens)")
+        columns = [row[1] for row in cur.fetchall()]
+        if 'scope' not in columns:
+            conn.execute("ALTER TABLE api_tokens ADD COLUMN scope TEXT NOT NULL DEFAULT 'admin'")
+        if 'user_id' not in columns:
+            conn.execute("ALTER TABLE api_tokens ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE")
+        conn.commit()
+    except Exception:
+        pass
+
+
 def init_db():
     db_path = get_db_path()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -181,4 +198,5 @@ def init_db():
     _migrate_env_to_db(conn)
     _migrate_homepod_json(conn)
     _migrate_alert_columns(conn)
+    _migrate_token_scope(conn)
     conn.close()

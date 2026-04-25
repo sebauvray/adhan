@@ -76,10 +76,24 @@
         <div class="form-section">
           <h2>Authentification</h2>
           <div class="form-group">
-            <label for="api_token">Token API</label>
+            <label for="api_token">Token admin (cette interface)</label>
             <span class="save-indicator" id="save-api_token">Sauvegardé</span>
-            <input type="text" id="api_token" placeholder="Collez votre token ici">
+            <input type="text" id="api_token" placeholder="Collez votre token admin ici">
           </div>
+        </div>
+
+        <div class="form-section">
+          <h2>Tokens API externes</h2>
+          <p style="font-size:0.75rem;color:var(--text-dark-muted);margin-bottom:0.6rem">
+            Tokens scope <code>prayers</code> pour valider/lire les prières d'un utilisateur depuis une app externe.
+          </p>
+          <div id="tokens-list"></div>
+          <div class="user-add-form" style="margin-top:0.6rem">
+            <select id="new-token-user" class="user-name-input" style="flex:1"></select>
+            <input type="text" id="new-token-desc" class="user-name-input" placeholder="Description (ex: Home Assistant)" style="flex:1.5">
+            <button type="button" class="btn btn-action btn-sm" onclick="createApiToken()">+</button>
+          </div>
+          <div id="new-token-display" class="token-display" style="display:none"></div>
         </div>
 
         <div class="form-section">
@@ -301,6 +315,9 @@
 
       // Users
       loadUsers();
+
+      // API tokens
+      loadApiTokens();
 
       // Upload handlers
       const fileInput = document.getElementById('adhan_upload');
@@ -612,6 +629,79 @@
       if (!confirm('Supprimer cet utilisateur et son historique ?')) return;
       await fetch('/api/users/' + id, { method: 'DELETE' });
       loadUsers();
+    }
+
+    // --- API Tokens ---
+
+    function adminAuthHeaders() {
+      const t = localStorage.getItem('adhan_token') || '';
+      return { 'Content-Type': 'application/json', 'Authorization': t ? `Bearer ${t}` : '' };
+    }
+
+    async function loadApiTokens() {
+      const list = document.getElementById('tokens-list');
+      const select = document.getElementById('new-token-user');
+      if (!list || !select) return;
+
+      // Fill user select
+      try {
+        const users = (await (await fetch('/api/users')).json()).users || [];
+        select.innerHTML = '<option value="">-- Utilisateur --</option>' +
+          users.map(u => `<option value="${u.id}">${u.emoji} ${u.name}</option>`).join('');
+      } catch {}
+
+      // Fetch tokens (admin)
+      try {
+        const resp = await fetch('/api/tokens', { headers: adminAuthHeaders() });
+        if (!resp.ok) {
+          list.innerHTML = '<p style="font-size:0.75rem;color:#c53030">Token admin requis pour lister.</p>';
+          return;
+        }
+        const tokens = (await resp.json()).tokens || [];
+        const externals = tokens.filter(t => t.scope === 'prayers');
+        list.innerHTML = externals.length
+          ? externals.map(t => `
+            <div class="user-item" data-id="${t.id}">
+              <span class="emoji-pick-btn" style="cursor:default">${t.user_emoji || '🔑'}</span>
+              <div style="flex:1;min-width:0">
+                <div class="user-name">${t.description || 'API'}</div>
+                <div style="font-size:0.7rem;color:var(--text-dark-muted)">${t.user_name || '?'} · ${t.created_at || ''}</div>
+              </div>
+              <button type="button" class="remove-btn" onclick="deleteApiToken(${t.id})" title="Révoquer">&times;</button>
+            </div>`).join('')
+          : '<p style="font-size:0.75rem;color:var(--text-dark-muted)">Aucun token externe</p>';
+      } catch {
+        list.innerHTML = '<p style="font-size:0.75rem;color:#c53030">Erreur</p>';
+      }
+    }
+
+    async function createApiToken() {
+      const userId = parseInt(document.getElementById('new-token-user').value);
+      const desc = document.getElementById('new-token-desc').value.trim();
+      if (!userId) { alert('Sélectionne un utilisateur'); return; }
+      try {
+        const resp = await fetch('/api/tokens', {
+          method: 'POST',
+          headers: adminAuthHeaders(),
+          body: JSON.stringify({ scope: 'prayers', user_id: userId, description: desc }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { alert(data.detail || 'Erreur'); return; }
+        const display = document.getElementById('new-token-display');
+        display.style.display = 'block';
+        display.innerHTML = `<strong>Token généré (copie-le maintenant, il ne sera plus affiché) :</strong><code>${data.token}</code>`;
+        document.getElementById('new-token-desc').value = '';
+        document.getElementById('new-token-user').value = '';
+        loadApiTokens();
+      } catch {
+        alert('Erreur de connexion');
+      }
+    }
+
+    async function deleteApiToken(id) {
+      if (!confirm('Révoquer ce token ?')) return;
+      await fetch('/api/tokens/' + id, { method: 'DELETE', headers: adminAuthHeaders() });
+      loadApiTokens();
     }
 
     // --- Play/Stop test ---

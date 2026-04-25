@@ -126,13 +126,129 @@ Override in `.env` without touching Dockerfiles:
 | `GET` | `/api/config` | — | Current configuration |
 | `GET` | `/api/outputs` | — | Available AirPlay speakers |
 | `GET` | `/api/prayer-outputs` | — | Speaker config per prayer |
-| `POST` | `/api/setup` | — | Initial setup (returns API token) |
-| `POST` | `/api/config` | Bearer | Update configuration |
+| `POST` | `/api/setup` | — | Initial setup (returns admin API token) |
+| `POST` | `/api/config` | Bearer `admin` | Update configuration |
 | `POST` | `/api/config-field` | — | Update a single config field |
-| `POST` | `/api/refresh` | Bearer | Force prayer time re-fetch |
+| `POST` | `/api/refresh` | Bearer `admin` | Force prayer time re-fetch |
 | `POST` | `/api/validate-url` | — | Validate a mawaqit.net URL |
 | `POST` | `/api/prayer-outputs` | — | Save speaker config per prayer |
 | `POST` | `/api/test-prayer/{prayer}` | — | Test adhan on configured speakers |
 | `POST` | `/api/stop-playback` | — | Stop OwnTone playback |
 | `POST` | `/api/upload-adhan` | — | Upload custom audio file |
 | `DELETE` | `/api/upload-adhan` | — | Delete custom audio file |
+| `GET` | `/api/users` | — | List users |
+| `POST` / `DELETE` | `/api/prayer-log` | Bearer `prayers` (optional) | Log/unlog a prayer (see [External API Integration](#external-api-integration)) |
+| `GET` | `/api/prayer-logs/me` | Bearer `prayers` | Prayers logged by the authenticated user |
+| `GET` | `/api/prayer-logs/{date}` | — | All prayer logs for a date |
+| `GET` | `/api/tokens` | Bearer `admin` | List API tokens |
+| `POST` | `/api/tokens` | Bearer `admin` | Create a `prayers` token for a user |
+| `DELETE` | `/api/tokens/{id}` | Bearer `admin` | Revoke a token |
+
+## External API Integration
+
+Adhan Home exposes a small API for external apps (Home Assistant, mobile widgets, custom scripts…) to:
+
+- read the next prayer time and countdown,
+- mark a prayer as done/undone for a specific user,
+- read which prayers a user has already done.
+
+### 1. Token model
+
+There are two token scopes, both stored in the `api_tokens` table:
+
+| Scope | Capabilities | How to get one |
+|-------|--------------|----------------|
+| `admin` | Full access (config, refresh, token management) | Generated automatically by the **setup wizard** on first launch. Don't share. |
+| `prayers` | Log/read prayers **for one specific user** only. Cannot touch the configuration. | Created from `/settings` → **"Tokens API externes"** by an admin. Tied to a specific user. |
+
+A `prayers` token is the right scope for an external integration. Each token is tied to **one user**, so the `user_id` is implicit — the external app never has to send it.
+
+### 2. Create a `prayers` token
+
+1. Open `http://<adhan-host>:8080/settings`
+2. Scroll to **"Tokens API externes"**
+3. Pick the user, give it a description (e.g. `Home Assistant`), click **`+`**
+4. **Copy the token immediately** — it's only shown once. Lost tokens must be revoked and recreated.
+
+### 3. Endpoints
+
+Base URL: `http://<adhan-host>:8080`
+
+| Method | Endpoint | Auth | Use |
+|--------|----------|------|-----|
+| `GET`  | `/api/next-prayer` | none | Next prayer (name, time, countdown) |
+| `GET`  | `/api/users` | none | List users (id, name, emoji) |
+| `GET`  | `/api/prayer-logs/me?date=YYYY-MM-DD` | Bearer `prayers` | Prayers logged by the token's user (default: today) |
+| `POST` | `/api/prayer-log` | Bearer `prayers` | Mark a prayer as done |
+| `DELETE` | `/api/prayer-log` | Bearer `prayers` | Unmark a prayer |
+
+### 4. Examples
+
+**Next prayer** (no auth required):
+
+```bash
+curl http://adhan.local:8080/api/next-prayer
+```
+```json
+{
+  "name": "Dhuhr",
+  "arabic": "الظهر",
+  "adhan": "13:30",
+  "iqama": "13:45",
+  "seconds_until": 1234,
+  "time_until": "0h20"
+}
+```
+
+Use `seconds_until` for your own countdown logic, or `time_until` for direct display.
+
+**What did I pray today?**
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://adhan.local:8080/api/prayer-logs/me
+```
+```json
+{
+  "date": "2026-04-26",
+  "user_id": 1,
+  "prayers": ["Fajr", "Dhuhr"]
+}
+```
+
+Add `?date=2026-04-25` to query another day.
+
+**Mark Fajr as done** (date must be today after adhan time, or yesterday):
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prayer":"Fajr","date":"2026-04-26"}' \
+  http://adhan.local:8080/api/prayer-log
+```
+
+`prayer` ∈ `{Fajr, Dhuhr, Asr, Maghrib, Isha}`. The `user_id` comes from the token — never send it.
+
+**Unmark**:
+
+```bash
+curl -X DELETE \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prayer":"Fajr","date":"2026-04-26"}' \
+  http://adhan.local:8080/api/prayer-log
+```
+
+### 5. Error codes
+
+| Code | Meaning |
+|------|---------|
+| `400` | Missing required field (`prayer`, `date`) |
+| `401` | Missing or invalid token |
+| `403` | Wrong scope, **or** the prayer/date is not editable (only yesterday and today after the adhan time has passed) |
+| `503` | App not configured yet (no mosque URL) |
+
+### 6. Revoke a token
+
+From `/settings` → **"Tokens API externes"** → click `×` next to the token. The token is invalidated immediately.

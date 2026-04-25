@@ -83,12 +83,12 @@ def get_token():
         return None
 
 
-def create_token(description="default"):
+def create_token(description="default", scope="admin", user_id=None):
     token = secrets.token_urlsafe(32)
     conn = _connect()
     conn.execute(
-        "INSERT INTO api_tokens (token, description) VALUES (?, ?)",
-        (token, description)
+        "INSERT INTO api_tokens (token, description, scope, user_id) VALUES (?, ?, ?, ?)",
+        (token, description, scope, user_id)
     )
     conn.commit()
     conn.close()
@@ -96,16 +96,56 @@ def create_token(description="default"):
 
 
 def validate_token(token):
+    """Returns {id, scope, user_id, description} if valid, else None."""
     if not token:
-        return False
+        return None
     try:
         conn = _connect()
-        cur = conn.execute("SELECT id FROM api_tokens WHERE token = ?", (token,))
+        cur = conn.execute(
+            "SELECT id, scope, user_id, description FROM api_tokens WHERE token = ?",
+            (token,)
+        )
         row = cur.fetchone()
         conn.close()
-        return row is not None
+        if not row:
+            return None
+        return {"id": row[0], "scope": row[1], "user_id": row[2], "description": row[3]}
     except Exception:
-        return False
+        return None
+
+
+def list_tokens():
+    """List tokens (without their values) joined with user info."""
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT t.id, t.description, t.scope, t.user_id, t.created_at, u.name, u.emoji "
+            "FROM api_tokens t LEFT JOIN users u ON t.user_id = u.id "
+            "ORDER BY t.created_at DESC"
+        )
+        rows = [
+            {
+                "id": r[0],
+                "description": r[1],
+                "scope": r[2],
+                "user_id": r[3],
+                "created_at": r[4],
+                "user_name": r[5],
+                "user_emoji": r[6],
+            }
+            for r in cur.fetchall()
+        ]
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
+def delete_token(token_id):
+    conn = _connect()
+    conn.execute("DELETE FROM api_tokens WHERE id = ?", (token_id,))
+    conn.commit()
+    conn.close()
 
 
 def get_alert_enabled(prayer):
@@ -349,6 +389,21 @@ def unlog_prayer(user_id, prayer, date):
     )
     conn.commit()
     conn.close()
+
+
+def get_prayer_logs_for_user_date(user_id, date_str):
+    """Returns list of prayer names logged by a user for a given date."""
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT prayer FROM prayer_logs WHERE user_id = ? AND date = ?",
+            (user_id, date_str)
+        )
+        prayers = [r[0] for r in cur.fetchall()]
+        conn.close()
+        return prayers
+    except Exception:
+        return []
 
 
 def get_prayer_logs_for_date(date_str):
