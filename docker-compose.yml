@@ -20,6 +20,12 @@ services:
       - TZ=${TZ:-Europe/Paris}
       - DB_PATH=/app/data/adhan.db
     command: uvicorn web.app:app --host 0.0.0.0 --port 8080 --reload
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/api/status', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: always
 
   adhan:
@@ -40,6 +46,12 @@ services:
       - TZ=${TZ:-Europe/Paris}
       - AUTONOMOUS=${AUTONOMOUS:-false}
       - DB_PATH=/app/data/adhan.db
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep cron > /dev/null && test -s /etc/cron.d/salat"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: always
 
   owntone:
