@@ -4,7 +4,7 @@ import os
 from datetime import datetime, time as dtime, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException, Header, UploadFile, File
+from fastapi import FastAPI, Request, Response, HTTPException, Header, Cookie, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -18,6 +18,9 @@ from db.config import (
     get_value, set_value, get_all, get_homepods, set_homepods,
     is_configured, has_token, create_token, validate_token,
     list_tokens, delete_token,
+    has_auth, create_auth, verify_auth,
+    create_session, validate_session, delete_session,
+    SESSION_DURATION_DAYS,
     get_prayer_outputs, set_prayer_outputs,
     get_all_prayer_volumes, set_prayer_volume,
     get_prayer_times_for_date,
@@ -28,6 +31,9 @@ from db.config import (
     get_all_alert_config, set_alert_enabled, set_alert_delay,
 )
 from providers.mawaqit_http_provider import get_full_data
+
+SESSION_COOKIE = "adhan_session"
+COOKIE_SECURE = os.environ.get('COOKIE_SECURE', 'false').lower() == 'true'
 
 app = FastAPI(title="Adhan Home")
 
@@ -54,36 +60,55 @@ async def startup():
 
 # --- Pages ---
 
+def _is_logged_in(adhan_session: Optional[str]) -> bool:
+    return bool(adhan_session and validate_session(adhan_session))
+
+
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    if not is_configured():
+    if not has_auth():
         return RedirectResponse("/setup")
     return RedirectResponse("/dashboard")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    if not is_configured():
+    if not has_auth():
         return RedirectResponse("/setup")
     return templates.TemplateResponse(request, "dashboard.html")
 
 
 @app.get("/setup", response_class=HTMLResponse)
 async def setup_page(request: Request):
+    if has_auth():
+        return RedirectResponse("/dashboard")
     return templates.TemplateResponse(request, "setup.html")
 
 
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    if not is_configured():
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, adhan_session: Optional[str] = Cookie(None)):
+    if not has_auth():
         return RedirectResponse("/setup")
+    if _is_logged_in(adhan_session):
+        return RedirectResponse("/settings")
+    return templates.TemplateResponse(request, "login.html")
+
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, adhan_session: Optional[str] = Cookie(None)):
+    if not has_auth():
+        return RedirectResponse("/setup")
+    if not _is_logged_in(adhan_session):
+        return RedirectResponse("/login?next=/settings")
     return templates.TemplateResponse(request, "settings.html", {"title": "Paramètres", "subtitle": "Sauvegarde automatique"})
 
 
 @app.get("/stats", response_class=HTMLResponse)
-async def stats_page(request: Request):
-    if not is_configured():
+async def stats_page(request: Request, adhan_session: Optional[str] = Cookie(None)):
+    if not has_auth():
         return RedirectResponse("/setup")
+    if not _is_logged_in(adhan_session):
+        return RedirectResponse("/login?next=/stats")
     return templates.TemplateResponse(request, "stats.html", {"title": "Statistiques", "subtitle": "Suivi des prieres"})
 
 
@@ -92,6 +117,20 @@ async def stats_page(request: Request):
 @app.get("/api/status")
 async def api_status():
     return {"configured": is_configured()}
+
+
+def _require_admin(authorization: Optional[str], session_cookie: Optional[str]):
+    """Admin auth: accepts either a session cookie (web UI) or a Bearer admin token (external apps).
+    Returns context dict or raises 401."""
+    if session_cookie:
+        sess = validate_session(session_cookie)
+        if sess:
+            return {"kind": "session", "auth_id": sess["auth_id"], "username": sess["username"]}
+    if authorization and authorization.startswith("Bearer "):
+        info = validate_token(authorization[7:])
+        if info and info["scope"] == "admin":
+            return {"kind": "token", **info}
+    raise HTTPException(status_code=401, detail="Authentification requise")
 
 
 def _require_token(authorization: Optional[str], allowed_scopes: list):
@@ -117,6 +156,22 @@ def _optional_token(authorization: Optional[str]):
     if not info:
         raise HTTPException(status_code=401, detail="Token invalide")
     return info
+
+
+def _set_session_cookie(response: Response, session_id: str):
+    response.set_cookie(
+        key=SESSION_COOKIE,
+        value=session_id,
+        max_age=SESSION_DURATION_DAYS * 86400,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="strict",
+        path="/",
+    )
+
+
+def _clear_session_cookie(response: Response):
+    response.delete_cookie(SESSION_COOKIE, path="/")
 
 
 def _can_edit(prayer: str, log_date_str: str) -> bool:
@@ -319,7 +374,9 @@ async def api_get_config():
     }
 
 
-class ConfigPayload(BaseModel):
+class SetupPayload(BaseModel):
+    username: str
+    password: str
     mosque_url: str
     sound_enabled: str = "false"
     owntone_host: str = ""
@@ -327,12 +384,23 @@ class ConfigPayload(BaseModel):
     adhan_file: str = "/srv/media/adhan.mp3"
     adhan_volume: str = "40"
     log_level: str = "INFO"
-    homepods: list = []
 
 
-async def _save_config(data: ConfigPayload):
-    """Sauvegarde toute la configuration dans SQLite."""
-    # Fetch mawaqit pour lat/lng/city
+@app.post("/api/setup")
+async def api_setup(data: SetupPayload, response: Response):
+    """First-launch setup: creates the admin account, saves base config, opens a session."""
+    if has_auth():
+        raise HTTPException(status_code=409, detail="Configuration déjà initialisée")
+
+    username = (data.username or '').strip()
+    password = data.password or ''
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Identifiant trop court (3 caractères minimum)")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Mot de passe trop court (8 caractères minimum)")
+
+    create_auth(username, password)
+
     try:
         mawaqit_data = get_full_data(data.mosque_url)
         set_value('config', 'LAT', str(mawaqit_data.get('lat', '')))
@@ -349,28 +417,56 @@ async def _save_config(data: ConfigPayload):
     set_value('owntone', 'ADHAN_FILE', data.adhan_file)
     set_value('owntone', 'ADHAN_VOLUME', data.adhan_volume)
 
-    if data.homepods:
-        set_homepods(data.homepods)
+    auth_id = verify_auth(username, password)
+    session_id = create_session(auth_id)
+    _set_session_cookie(response, session_id)
 
-
-@app.post("/api/setup")
-async def api_setup(data: ConfigPayload):
-    await _save_config(data)
-
-    # Générer le token au premier setup
-    new_token = None
-    if not has_token():
-        new_token = create_token("setup")
-
-    # Déclencher le premier fetch des horaires
     subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
 
-    return {"success": True, "token": new_token}
+    return {"success": True}
+
+
+# --- Login / Logout ---
+
+class LoginPayload(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/login")
+async def api_login(data: LoginPayload, response: Response):
+    auth_id = verify_auth((data.username or '').strip(), data.password or '')
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Identifiants invalides")
+    session_id = create_session(auth_id)
+    _set_session_cookie(response, session_id)
+    return {"success": True}
+
+
+@app.post("/api/logout")
+async def api_logout(
+    response: Response,
+    adhan_session: Optional[str] = Cookie(None),
+):
+    delete_session(adhan_session)
+    _clear_session_cookie(response)
+    return {"success": True}
+
+
+@app.get("/api/auth/status")
+async def api_auth_status(adhan_session: Optional[str] = Cookie(None)):
+    """Reports whether the current request carries a valid session.
+    Used by the frontend to decide between /login and /dashboard."""
+    sess = validate_session(adhan_session) if adhan_session else None
+    return {"authenticated": bool(sess), "username": sess["username"] if sess else None}
 
 
 @app.post("/api/refresh")
-async def api_refresh(authorization: Optional[str] = Header(None)):
-    _require_token(authorization, ["admin"])
+async def api_refresh(
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
 
     subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
     return {"success": True}
@@ -402,9 +498,13 @@ async def api_outputs():
 
 
 @app.post("/api/config")
-async def api_config(payload: dict, authorization: Optional[str] = Header(None)):
+async def api_config(
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
     """Save a single config field. Expects {table, key, value}."""
-    _require_token(authorization, ["admin"])
+    _require_admin(authorization, adhan_session)
 
     table = payload.get('table')
     key = payload.get('key')
@@ -438,8 +538,13 @@ async def api_get_prayer_outputs():
 
 
 @app.post("/api/prayer-outputs")
-async def api_set_prayer_outputs(payload: dict):
+async def api_set_prayer_outputs(
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
     """Save speaker config per prayer. Expects {outputs: {prayer: [{id, name}]}, volumes: {prayer: int}}."""
+    _require_admin(authorization, adhan_session)
     outputs = payload.get('outputs', {})
     volumes = payload.get('volumes', {})
     alerts = payload.get('alerts', {})
@@ -457,8 +562,13 @@ async def api_set_prayer_outputs(payload: dict):
 
 
 @app.post("/api/test-prayer/{prayer}")
-async def api_test_prayer(prayer: str):
+async def api_test_prayer(
+    prayer: str,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
     """Play adhan on configured outputs for a specific prayer."""
+    _require_admin(authorization, adhan_session)
     from db.config import get_outputs_for_prayer, get_prayer_volume
     host = get_value('owntone', 'HOST', 'host.docker.internal')
     port = get_value('owntone', 'PORT', '3689')
@@ -507,8 +617,12 @@ async def api_test_prayer(prayer: str):
 
 
 @app.post("/api/stop-playback")
-async def api_stop_playback():
+async def api_stop_playback(
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
     """Stop OwnTone playback."""
+    _require_admin(authorization, adhan_session)
     host = get_value('owntone', 'HOST', 'host.docker.internal')
     port = get_value('owntone', 'PORT', '3689')
     http_requests.put(f"http://{host}:{port}/api/player/stop", timeout=5)
@@ -520,7 +634,12 @@ ALLOWED_AUDIO = {'.mp3', '.wav', '.ogg', '.m4a', '.flac'}
 
 
 @app.post("/api/upload-adhan")
-async def api_upload_adhan(file: UploadFile = File(...)):
+async def api_upload_adhan(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_AUDIO:
         raise HTTPException(status_code=400, detail=f"Format non supporté ({ext}). Formats acceptés : {', '.join(ALLOWED_AUDIO)}")
@@ -537,7 +656,11 @@ async def api_upload_adhan(file: UploadFile = File(...)):
 
 
 @app.delete("/api/upload-adhan")
-async def api_delete_adhan():
+async def api_delete_adhan(
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     adhan_file = get_value('owntone', 'ADHAN_FILE', '')
     if adhan_file and os.path.exists(adhan_file):
         os.remove(adhan_file)
@@ -546,7 +669,12 @@ async def api_delete_adhan():
 
 
 @app.post("/api/upload-alert")
-async def api_upload_alert(file: UploadFile = File(...)):
+async def api_upload_alert(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_AUDIO:
         raise HTTPException(status_code=400, detail=f"Format non supporté ({ext}). Formats acceptés : {', '.join(ALLOWED_AUDIO)}")
@@ -563,7 +691,11 @@ async def api_upload_alert(file: UploadFile = File(...)):
 
 
 @app.delete("/api/upload-alert")
-async def api_delete_alert():
+async def api_delete_alert(
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     alert_file = get_value('owntone', 'ALERT_FILE', '')
     if alert_file and os.path.exists(alert_file):
         os.remove(alert_file)
@@ -579,7 +711,12 @@ async def api_get_users():
 
 
 @app.post("/api/users")
-async def api_create_user(payload: dict):
+async def api_create_user(
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     name = payload.get('name', '').strip()
     emoji = payload.get('emoji', '🙂').strip()
     if not name:
@@ -589,7 +726,13 @@ async def api_create_user(payload: dict):
 
 
 @app.put("/api/users/{user_id}")
-async def api_update_user(user_id: int, payload: dict):
+async def api_update_user(
+    user_id: int,
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     name = payload.get('name', '').strip()
     emoji = payload.get('emoji', '🙂').strip()
     if not name:
@@ -599,7 +742,12 @@ async def api_update_user(user_id: int, payload: dict):
 
 
 @app.delete("/api/users/{user_id}")
-async def api_delete_user(user_id: int):
+async def api_delete_user(
+    user_id: int,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     delete_user(user_id)
     return {"success": True}
 
@@ -691,14 +839,21 @@ async def api_stats(period: str = 'month', user_id: int = None):
 # --- Tokens API (admin only) ---
 
 @app.get("/api/tokens")
-async def api_list_tokens(authorization: Optional[str] = Header(None)):
-    _require_token(authorization, ["admin"])
+async def api_list_tokens(
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     return {"tokens": list_tokens()}
 
 
 @app.post("/api/tokens")
-async def api_create_token(payload: dict, authorization: Optional[str] = Header(None)):
-    _require_token(authorization, ["admin"])
+async def api_create_token(
+    payload: dict,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     scope = payload.get('scope', 'prayers')
     if scope not in ('admin', 'prayers'):
         raise HTTPException(status_code=400, detail="Scope invalide")
@@ -716,8 +871,12 @@ async def api_create_token(payload: dict, authorization: Optional[str] = Header(
 
 
 @app.delete("/api/tokens/{token_id}")
-async def api_delete_token(token_id: int, authorization: Optional[str] = Header(None)):
-    _require_token(authorization, ["admin"])
+async def api_delete_token(
+    token_id: int,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    _require_admin(authorization, adhan_session)
     delete_token(token_id)
     return {"success": True}
 

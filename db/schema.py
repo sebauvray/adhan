@@ -71,6 +71,22 @@ CREATE TABLE IF NOT EXISTS prayer_logs (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (user_id, prayer, date)
 );
+
+CREATE TABLE IF NOT EXISTS auth (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT    UNIQUE NOT NULL,
+    password_hash TEXT    NOT NULL,
+    created_at    TEXT    DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    session_id TEXT PRIMARY KEY,
+    auth_id    INTEGER NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    last_seen  TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (auth_id) REFERENCES auth(id) ON DELETE CASCADE
+);
 """
 
 

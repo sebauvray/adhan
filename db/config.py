@@ -2,7 +2,10 @@ import sqlite3
 import secrets
 import hashlib
 from collections import defaultdict
+from datetime import datetime, timedelta
 from db.schema import get_db_path
+
+SESSION_DURATION_DAYS = 30
 
 
 def _connect():
@@ -75,6 +78,173 @@ def set_homepods(homepods):
 def is_configured():
     url = get_value('config', 'MOSQUE_URL')
     return bool(url)
+
+
+# --- Auth (admin login) ---
+
+def has_auth():
+    """Return True if an admin account exists."""
+    try:
+        conn = _connect()
+        cur = conn.execute("SELECT 1 FROM auth LIMIT 1")
+        exists = cur.fetchone() is not None
+        conn.close()
+        return exists
+    except Exception:
+        return False
+
+
+def create_auth(username, password):
+    """Create the admin account. password is hashed with bcrypt."""
+    import bcrypt
+    pw_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO auth (username, password_hash) VALUES (?, ?)",
+        (username, pw_hash)
+    )
+    conn.commit()
+    conn.close()
+
+
+def verify_auth(username, password):
+    """Verify credentials. Returns auth_id if valid, else None."""
+    import bcrypt
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT id, password_hash FROM auth WHERE username = ?",
+            (username,)
+        )
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return None
+        auth_id, pw_hash = row
+        if bcrypt.checkpw(password.encode('utf-8'), pw_hash.encode('utf-8')):
+            return auth_id
+        return None
+    except Exception:
+        return None
+
+
+def list_auth():
+    """Returns [{id, username, created_at}, ...]."""
+    try:
+        conn = _connect()
+        cur = conn.execute("SELECT id, username, created_at FROM auth ORDER BY id")
+        rows = [{"id": r[0], "username": r[1], "created_at": r[2]} for r in cur.fetchall()]
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
+def update_auth_password(username, new_password):
+    """Update password for an existing admin. Invalidates all their sessions.
+    Returns True if updated, False if no such account."""
+    import bcrypt
+    pw_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    conn = _connect()
+    cur = conn.execute(
+        "UPDATE auth SET password_hash = ? WHERE username = ?",
+        (pw_hash, username)
+    )
+    if cur.rowcount == 0:
+        conn.close()
+        return False
+    conn.execute(
+        "DELETE FROM sessions WHERE auth_id IN (SELECT id FROM auth WHERE username = ?)",
+        (username,)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+def delete_auth(username):
+    """Delete an admin account and all its sessions. Returns True if deleted."""
+    conn = _connect()
+    cur = conn.execute("DELETE FROM auth WHERE username = ?", (username,))
+    deleted = cur.rowcount > 0
+    conn.commit()
+    conn.close()
+    return deleted
+
+
+# --- Sessions (cookie-based admin auth) ---
+
+def create_session(auth_id):
+    """Create a new session for an authenticated admin. Returns session_id."""
+    session_id = secrets.token_urlsafe(48)
+    expires_at = (datetime.utcnow() + timedelta(days=SESSION_DURATION_DAYS)).isoformat(timespec='seconds')
+    conn = _connect()
+    conn.execute(
+        "INSERT INTO sessions (session_id, auth_id, expires_at) VALUES (?, ?, ?)",
+        (session_id, auth_id, expires_at)
+    )
+    conn.commit()
+    conn.close()
+    return session_id
+
+
+def validate_session(session_id):
+    """Returns {auth_id, username} if session is valid and not expired, else None.
+    Also refreshes last_seen."""
+    if not session_id:
+        return None
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT s.auth_id, s.expires_at, a.username "
+            "FROM sessions s JOIN auth a ON a.id = s.auth_id "
+            "WHERE s.session_id = ?",
+            (session_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return None
+        auth_id, expires_at, username = row
+        if datetime.fromisoformat(expires_at) < datetime.utcnow():
+            conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+            conn.commit()
+            conn.close()
+            return None
+        conn.execute(
+            "UPDATE sessions SET last_seen = ? WHERE session_id = ?",
+            (datetime.utcnow().isoformat(timespec='seconds'), session_id)
+        )
+        conn.commit()
+        conn.close()
+        return {"auth_id": auth_id, "username": username}
+    except Exception:
+        return None
+
+
+def delete_session(session_id):
+    if not session_id:
+        return
+    try:
+        conn = _connect()
+        conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def cleanup_expired_sessions():
+    try:
+        conn = _connect()
+        conn.execute(
+            "DELETE FROM sessions WHERE expires_at < ?",
+            (datetime.utcnow().isoformat(timespec='seconds'),)
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 def has_token():

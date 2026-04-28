@@ -202,15 +202,15 @@
     }
 
     async function saveField(table, key, value) {
-      const token = localStorage.getItem('adhan_token');
-      await fetch(API_CONFIG, {
+      const resp = await fetch(API_CONFIG, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ table, key, value }),
       });
+      if (resp.status === 401) {
+        window.location.href = '/login?next=/settings';
+      }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -500,12 +500,15 @@
         enabled: alertCb ? alertCb.checked : false,
         delay: alertDelay ? parseInt(alertDelay.value) || 0 : 0,
       };
-      const token = localStorage.getItem('adhan_token');
-      await fetch('/api/prayer-outputs', {
+      const resp = await fetch('/api/prayer-outputs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': token ? `Bearer ${token}` : '' },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ outputs: { [prayer]: selected }, volumes: { [prayer]: volume }, alerts: { [prayer]: alert } }),
       });
+      if (resp.status === 401) {
+        window.location.href = '/login?next=/settings';
+      }
     }
 
     // --- Emoji Picker ---
@@ -609,11 +612,6 @@
 
     // --- API Tokens ---
 
-    function adminAuthHeaders() {
-      const t = localStorage.getItem('adhan_token') || '';
-      return { 'Content-Type': 'application/json', 'Authorization': t ? `Bearer ${t}` : '' };
-    }
-
     async function loadApiTokens() {
       const list = document.getElementById('tokens-list');
       const select = document.getElementById('new-token-user');
@@ -626,11 +624,14 @@
           users.map(u => `<option value="${u.id}">${u.emoji} ${u.name}</option>`).join('');
       } catch {}
 
-      // Fetch tokens (admin)
       try {
-        const resp = await fetch('/api/tokens', { headers: adminAuthHeaders() });
+        const resp = await fetch('/api/tokens', { credentials: 'same-origin' });
+        if (resp.status === 401) {
+          window.location.href = '/login?next=/settings';
+          return;
+        }
         if (!resp.ok) {
-          list.innerHTML = '<p style="font-size:0.75rem;color:#c53030">Token admin requis pour lister.</p>';
+          list.innerHTML = '<p style="font-size:0.75rem;color:#c53030">Erreur de chargement.</p>';
           return;
         }
         const tokens = (await resp.json()).tokens || [];
@@ -658,9 +659,14 @@
       try {
         const resp = await fetch('/api/tokens', {
           method: 'POST',
-          headers: adminAuthHeaders(),
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scope: 'prayers', user_id: userId, description: desc }),
         });
+        if (resp.status === 401) {
+          window.location.href = '/login?next=/settings';
+          return;
+        }
         const data = await resp.json();
         if (!resp.ok) { alert(data.detail || 'Erreur'); return; }
         const display = document.getElementById('new-token-display');
@@ -676,7 +682,7 @@
 
     async function deleteApiToken(id) {
       if (!confirm('Révoquer ce token ?')) return;
-      await fetch('/api/tokens/' + id, { method: 'DELETE', headers: adminAuthHeaders() });
+      await fetch('/api/tokens/' + id, { method: 'DELETE', credentials: 'same-origin' });
       loadApiTokens();
     }
 

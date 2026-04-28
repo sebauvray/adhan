@@ -31,6 +31,7 @@ Two Docker containers share a SQLite database and a cron volume:
 | `_archive/home_assistant.py` | [ARCHIVED] HA REST API client — awaiting use case definition |
 | `load_config.py` | SQLite → shell exports (for adhan.sh) |
 | `get_homepods.py` | SQLite → HomePod names for a period (for adhan.sh) |
+| `admin_reset.py` | CLI for admin account recovery (run via `docker exec`) |
 
 ## Data Storage
 
@@ -38,33 +39,48 @@ Two Docker containers share a SQLite database and a cron volume:
 - `config` table — MOSQUE_URL, LAT, LNG, CITY, LOG_LEVEL, time periods
 - `owntone` table — HOST, PORT, ADHAN_FILE, ADHAN_VOLUME
 - `homepods` table — name, morning, afternoon, evening booleans
-- `api_tokens` table — bearer tokens for protected endpoints
+- `auth` table — admin account (`username`, `password_hash` bcrypt)
+- `sessions` table — active session cookies (`session_id`, `auth_id`, `expires_at`)
+- `api_tokens` table — bearer tokens for external apps (SHA-256 hashed)
 - `users` table — id, name, emoji, created_at
 - `prayer_logs` table — user_id, prayer, date (unique per user/prayer/date)
 
-**`.env`** is infrastructure only: TZ, ports, build versions.
+**`.env`** is infrastructure only: TZ, ports, build versions, `COOKIE_SECURE`.
+
+## Auth
+
+Two parallel mechanisms guard admin endpoints:
+- **Session cookie** (`adhan_session`, HttpOnly, SameSite=Strict, 30d) issued by `POST /api/login` → for the web UI
+- **Bearer admin token** (`Authorization: Bearer …`, scope `admin`) for non-browser clients (Home Assistant, scripts)
+
+`_require_admin()` in [web/app.py](web/app.py) accepts either. Public endpoints stay public (dashboard data); only admin actions and `/api/prayer-logs/me` require auth.
+
+The `prayers`-scoped Bearer token (one per user) is for external apps that only log/read prayers — it never grants config access.
 
 ## API
 
 - `GET /api/prayers` — prayer data with status (past/current/upcoming) + iqama + next prayer countdown
 - `GET /api/weather` — Open-Meteo weather from stored lat/lng
-- `POST /api/setup` — first-time config, returns generated API token
-- `POST /api/config` — update a single config field `{table, key, value}` (requires Bearer admin token)
-- `POST /api/refresh` — re-run get_time_salat.py (requires Bearer token)
+- `POST /api/setup` — one-shot first-launch: creates admin account + saves base config + opens session
+- `POST /api/login` — `{username, password}` → sets session cookie
+- `POST /api/logout` — clears session
+- `POST /api/config` — update a single config field `{table, key, value}` (admin)
+- `POST /api/refresh` — re-run get_time_salat.py (admin)
 - `POST /api/validate-url` — validate mawaqit URL, returns prayer preview
-- `GET/POST /api/users` — list/create users
-- `PUT/DELETE /api/users/{id}` — update/delete user
+- `GET/POST /api/users` — list/create users (POST = admin)
+- `PUT/DELETE /api/users/{id}` — update/delete user (admin)
 - `POST/DELETE /api/prayer-log` — log/unlog a prayer for a user on a date
 - `GET /api/prayer-logs/{date}` — get prayer logs + users for a date
 - `GET /api/stats` — leaderboard or heatmap (params: period, user_id)
 
 ## Web UI Pages
 
-- `/` — redirects to `/setup` or `/dashboard`
-- `/dashboard` — prayer times, weather, clock, countdown, prayer tracking avatars
-- `/setup` — first-launch wizard
-- `/settings` — all config editable (gear icon on dashboard), user management
-- `/stats` — leaderboard + heatmap (bar chart icon on dashboard)
+- `/` — redirects to `/setup` (no admin) or `/dashboard`
+- `/dashboard` — prayer times, weather, clock, countdown, prayer tracking avatars (public)
+- `/setup` — first-launch wizard (creates admin) — refuses to load once admin exists
+- `/login` — admin login (redirects to `/settings` once authenticated)
+- `/settings` — all config editable (admin only)
+- `/stats` — leaderboard + heatmap (admin only)
 
 ## Mawaqit confData Structure
 

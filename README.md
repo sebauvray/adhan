@@ -114,11 +114,35 @@ Override in `.env` without touching Dockerfiles:
 | `DEBIAN_VERSION` | `bookworm` | Base image |
 | `GECKODRIVER_VERSION` | `v0.34.0` | Selenium mode only |
 
+## Authentication model
+
+Two separate worlds:
+
+- **Web UI (browser)** — username/password set at the install wizard. Login at `/login`, session kept in an HttpOnly cookie (`adhan_session`, 30 days). The dashboard at `/dashboard` is public; `/settings` and `/stats` require login.
+- **External apps** — Bearer tokens (scope `admin` or `prayers`) created from the settings page. See [External API Integration](#external-api-integration). `admin` Bearer is accepted on the same admin endpoints as the cookie session, for non-browser clients.
+
+Tokens and passwords are hashed before storage (SHA-256 for tokens, bcrypt for passwords).
+
+### Admin account recovery
+
+If you lose the admin password, manage accounts from the container shell:
+
+```bash
+docker exec -it adhan-web python3 /app/admin_reset.py
+# or non-interactive:
+docker exec -it adhan-web python3 /app/admin_reset.py reset <username>
+```
+
+Subcommands: `list`, `create <username>`, `reset <username>`, `delete <username>`. Resetting a password invalidates all active sessions for that account.
+
 ## API Endpoints
+
+`Admin` below means *either* a valid session cookie *or* a Bearer token with `admin` scope.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `GET` | `/api/status` | — | Check if configured |
+| `GET` | `/api/auth/status` | — | Returns `{authenticated, username}` for the current cookie |
 | `GET` | `/api/prayers` | — | Prayer times + statuses + next prayer countdown |
 | `GET` | `/api/next-prayer` | — | Next prayer name, time, countdown |
 | `GET` | `/api/jumua` | — | Friday prayer times |
@@ -126,22 +150,27 @@ Override in `.env` without touching Dockerfiles:
 | `GET` | `/api/config` | — | Current configuration |
 | `GET` | `/api/outputs` | — | Available AirPlay speakers |
 | `GET` | `/api/prayer-outputs` | — | Speaker config per prayer |
-| `POST` | `/api/setup` | — | Initial setup (returns admin API token) |
-| `POST` | `/api/config` | Bearer `admin` | Update a single config field (`{table, key, value}`) |
-| `POST` | `/api/refresh` | Bearer `admin` | Force prayer time re-fetch |
+| `POST` | `/api/setup` | — | Initial setup (creates admin account, only callable once) |
+| `POST` | `/api/login` | — | `{username, password}` → sets session cookie |
+| `POST` | `/api/logout` | session | Clears the session cookie |
+| `POST` | `/api/config` | Admin | Update a single config field (`{table, key, value}`) |
+| `POST` | `/api/refresh` | Admin | Force prayer time re-fetch |
 | `POST` | `/api/validate-url` | — | Validate a mawaqit.net URL |
-| `POST` | `/api/prayer-outputs` | — | Save speaker config per prayer |
-| `POST` | `/api/test-prayer/{prayer}` | — | Test adhan on configured speakers |
-| `POST` | `/api/stop-playback` | — | Stop OwnTone playback |
-| `POST` | `/api/upload-adhan` | — | Upload custom audio file |
-| `DELETE` | `/api/upload-adhan` | — | Delete custom audio file |
+| `POST` | `/api/prayer-outputs` | Admin | Save speaker config per prayer |
+| `POST` | `/api/test-prayer/{prayer}` | Admin | Test adhan on configured speakers |
+| `POST` | `/api/stop-playback` | Admin | Stop OwnTone playback |
+| `POST` | `/api/upload-adhan` | Admin | Upload custom audio file |
+| `DELETE` | `/api/upload-adhan` | Admin | Delete custom audio file |
+| `POST` | `/api/upload-alert` | Admin | Upload custom alert file |
+| `DELETE` | `/api/upload-alert` | Admin | Delete custom alert file |
 | `GET` | `/api/users` | — | List users |
+| `POST` / `PUT` / `DELETE` | `/api/users[/{id}]` | Admin | Create/update/delete a user |
 | `POST` / `DELETE` | `/api/prayer-log` | Bearer `prayers` (optional) | Log/unlog a prayer (see [External API Integration](#external-api-integration)) |
 | `GET` | `/api/prayer-logs/me` | Bearer `prayers` | Prayers logged by the authenticated user |
 | `GET` | `/api/prayer-logs/{date}` | — | All prayer logs for a date |
-| `GET` | `/api/tokens` | Bearer `admin` | List API tokens |
-| `POST` | `/api/tokens` | Bearer `admin` | Create a `prayers` token for a user |
-| `DELETE` | `/api/tokens/{id}` | Bearer `admin` | Revoke a token |
+| `GET` | `/api/tokens` | Admin | List API tokens |
+| `POST` | `/api/tokens` | Admin | Create a `prayers` token for a user |
+| `DELETE` | `/api/tokens/{id}` | Admin | Revoke a token |
 
 ## External API Integration
 
