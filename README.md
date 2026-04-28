@@ -129,15 +129,23 @@ Tokens and passwords are hashed before storage (SHA-256 for tokens, bcrypt for p
 
 ### Admin account recovery
 
-If you lose the admin password, manage accounts from the container shell:
+If you lose the admin password, the easiest path is the Makefile wrappers:
 
 ```bash
-docker exec -it adhan-web python3 /app/admin_reset.py
-# or non-interactive:
-docker exec -it adhan-web python3 /app/admin_reset.py reset <username>
+make admin                    # interactive menu
+make admin-list
+make admin-reset NAME=<user>  # change password + invalidate active sessions
+make admin-create NAME=<user>
+make admin-delete NAME=<user>
 ```
 
-Subcommands: `list`, `create <username>`, `reset <username>`, `delete <username>`. Resetting a password invalidates all active sessions for that account.
+Under the hood they `docker exec` into the web container and run `python3 /app/cli/admin_reset.py`. You can call it directly if you prefer:
+
+```bash
+docker exec -it adhan-web python3 /app/cli/admin_reset.py reset <username>
+```
+
+Resetting a password invalidates every active session of that account, so any logged-in browser is logged out immediately.
 
 ## API Endpoints
 
