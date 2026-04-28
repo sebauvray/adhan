@@ -8,6 +8,7 @@ endif
 
 CONTAINER_WEB := $(or $(CONTAINER_NAME_WEB),adhan-web)
 WEB_PORT      := $(or $(WEB_PORT),8080)
+DB_PATH       := ./data/adhan.db
 ADMIN_CLI     := docker exec -it $(CONTAINER_WEB) python3 /app/cli/admin_reset.py
 
 ## Afficher l'aide
@@ -27,9 +28,17 @@ help:
 	@echo "  admin-reset     Réinitialiser un mdp    (NAME=<username>)"
 	@echo "  admin-delete    Supprimer un compte     (NAME=<username>)"
 
-## Démarrer le projet
+## Démarrer le projet (active le profile bundled si OwnTone est en mode local)
 up:
-	docker compose up -d --build
+	@MODE=$$(sqlite3 $(DB_PATH) "SELECT value FROM config WHERE key='OWNTONE_MODE'" 2>/dev/null); \
+	MODE=$${MODE:-local}; \
+	if [ "$$MODE" = "external" ]; then \
+		echo "→ OwnTone : externe (service intégré non lancé)"; \
+		docker compose up -d --build --remove-orphans; \
+	else \
+		echo "→ OwnTone : intégré (profile bundled actif)"; \
+		COMPOSE_PROFILES=bundled docker compose up -d --build --remove-orphans; \
+	fi
 
 ## Arrêter le projet
 down:

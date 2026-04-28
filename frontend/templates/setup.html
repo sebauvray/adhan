@@ -86,6 +86,7 @@
       <div class="dot" data-step="1"></div>
       <div class="dot" data-step="2"></div>
       <div class="dot" data-step="3"></div>
+      <div class="dot" data-step="4"></div>
     </div>
 
     <!-- Step 0: Admin account -->
@@ -171,12 +172,51 @@
 
       <div class="actions" style="margin-top:1.5rem">
         <button type="button" class="btn btn-secondary" onclick="goToStep(1)">Retour</button>
-        <button type="button" id="next-sound" class="btn btn-action" disabled onclick="finishSetup()">Installer</button>
+        <button type="button" id="next-sound" class="btn btn-action" disabled onclick="goToSoundNext()">Suivant</button>
       </div>
     </div>
 
-    <!-- Step 3: Done -->
+    <!-- Step 3: OwnTone install mode (skipped if "Non" to sound alerts) -->
     <div class="step" id="step-3">
+      <div class="form-section">
+        <h2>Diffusion audio</h2>
+        <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
+          Comment souhaites-tu jouer l'adhan sur tes enceintes ?
+        </p>
+
+        <div class="choice-cards">
+          <div class="choice-card selected" onclick="selectOwntoneMode('local')" id="choice-owntone-local">
+            <div class="choice-icon">🚀</div>
+            <div class="choice-label">Installation simple</div>
+            <div class="choice-desc">On installe OwnTone pour toi (recommandé)</div>
+          </div>
+          <div class="choice-card" onclick="selectOwntoneMode('external')" id="choice-owntone-external">
+            <div class="choice-icon">⚙️</div>
+            <div class="choice-label">J'ai déjà OwnTone</div>
+            <div class="choice-desc">Je connecte à mon serveur existant</div>
+          </div>
+        </div>
+
+        <div id="owntone-external-fields" style="display:none;margin-top:1rem">
+          <div class="form-group">
+            <label for="setup_owntone_host">Adresse OwnTone</label>
+            <input type="text" id="setup_owntone_host" placeholder="host.docker.internal" value="host.docker.internal">
+          </div>
+          <div class="form-group" style="margin-top:0.6rem">
+            <label for="setup_owntone_port">Port</label>
+            <input type="text" id="setup_owntone_port" placeholder="3689" value="3689" style="max-width:8rem">
+          </div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:1.5rem">
+        <button type="button" class="btn btn-secondary" onclick="goToStep(2)">Retour</button>
+        <button type="button" class="btn btn-action" onclick="finishSetup()">Installer</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Done -->
+    <div class="step" id="step-4">
       <div class="form-section">
         <h2>Installation terminée</h2>
 
@@ -201,6 +241,9 @@
       emoji: '🙂',
       mosque_url: '',
       sound_enabled: 'false',
+      owntone_mode: 'local',
+      owntone_host: 'host.docker.internal',
+      owntone_port: '3689',
       city: '',
     };
 
@@ -297,13 +340,41 @@
       document.getElementById('choice-yes').classList.toggle('selected', enabled);
       document.getElementById('choice-no').classList.toggle('selected', !enabled);
       document.getElementById('sound-info').style.display = enabled ? 'block' : 'none';
-      document.getElementById('next-sound').disabled = false;
+      const btn = document.getElementById('next-sound');
+      btn.disabled = false;
+      btn.textContent = enabled ? 'Suivant' : 'Installer';
+    }
+
+    function goToSoundNext() {
+      if (setupData.sound_enabled === 'true') {
+        goToStep(3);
+      } else {
+        finishSetup();
+      }
+    }
+
+    function selectOwntoneMode(mode) {
+      setupData.owntone_mode = mode;
+      document.getElementById('choice-owntone-local').classList.toggle('selected', mode === 'local');
+      document.getElementById('choice-owntone-external').classList.toggle('selected', mode === 'external');
+      document.getElementById('owntone-external-fields').style.display = mode === 'external' ? 'block' : 'none';
     }
 
     async function finishSetup() {
-      const btn = document.getElementById('next-sound');
-      btn.disabled = true;
-      btn.innerHTML = 'Installation<span class="spinner"></span>';
+      // The "Installer" button lives on step 2 (no sound) or step 3 (sound on)
+      const activeStep = document.querySelector('.step.active');
+      const btn = activeStep ? activeStep.querySelector('.btn-action') : null;
+      const originalLabel = btn ? btn.textContent : 'Installer';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Installation<span class="spinner"></span>';
+      }
+
+      // Pull external OwnTone values if user picked that mode
+      if (setupData.owntone_mode === 'external') {
+        setupData.owntone_host = (document.getElementById('setup_owntone_host').value || '').trim() || 'host.docker.internal';
+        setupData.owntone_port = (document.getElementById('setup_owntone_port').value || '').trim() || '3689';
+      }
 
       try {
         const resp = await fetch('/api/setup', {
@@ -316,12 +387,19 @@
 
         if (resp.ok && result.success) {
           const recap = document.getElementById('setup-recap');
+          let owntoneRecap = '';
+          if (setupData.sound_enabled === 'true') {
+            owntoneRecap = setupData.owntone_mode === 'local'
+              ? '<div class="recap-row"><span class="recap-label">OwnTone</span><span class="recap-value">Installation simple</span></div>'
+              : `<div class="recap-row"><span class="recap-label">OwnTone</span><span class="recap-value">Externe (${setupData.owntone_host}:${setupData.owntone_port})</span></div>`;
+          }
           recap.innerHTML = `
             <div class="recap-row"><span class="recap-label">Identifiant</span><span class="recap-value">${setupData.username}</span></div>
             <div class="recap-row"><span class="recap-label">Mosquée</span><span class="recap-value">${setupData.city}</span></div>
             <div class="recap-row"><span class="recap-label">Alertes sonores</span><span class="recap-value">${setupData.sound_enabled === 'true' ? 'Activées' : 'Désactivées'}</span></div>
+            ${owntoneRecap}
           `;
-          goToStep(3);
+          goToStep(4);
 
           let seconds = 5;
           const countdownEl = document.getElementById('redirect-countdown');
@@ -334,13 +412,11 @@
             }
           }, 1000);
         } else {
-          btn.disabled = false;
-          btn.textContent = 'Installer';
+          if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
           alert(result.detail || "Erreur d'installation");
         }
       } catch (e) {
-        btn.disabled = false;
-        btn.textContent = 'Installer';
+        if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
         alert('Erreur de connexion');
       }
     }

@@ -141,6 +141,7 @@ def _ensure_defaults(conn):
             'QUIET_END': '07:00',
             'QUIET_VOLUME': '10',
             'MULTI_DAY_DISPLAY': 'false',
+            'OWNTONE_MODE': 'local',
         },
     }
     for table, values in defaults.items():

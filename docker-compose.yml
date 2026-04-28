@@ -59,6 +59,7 @@ services:
     restart: always
 
   owntone:
+    profiles: ["bundled"]
     container_name: ${CONTAINER_NAME_OWNTONE:-owntone}
     image: owntone/owntone:latest
     network_mode: host

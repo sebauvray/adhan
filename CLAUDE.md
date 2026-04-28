@@ -40,7 +40,7 @@ Two Docker containers share a SQLite database and a cron volume:
 ## Data Storage
 
 **SQLite** (`data/adhan.db`) stores all app config:
-- `config` table — MOSQUE_URL, LAT, LNG, CITY, LOG_LEVEL, time periods
+- `config` table — MOSQUE_URL, LAT, LNG, CITY, LOG_LEVEL, time periods, OWNTONE_MODE
 - `owntone` table — HOST, PORT, ADHAN_FILE, ADHAN_VOLUME
 - `homepods` table — name, morning, afternoon, evening booleans
 - `auth` table — admin account (`username`, `password_hash` bcrypt)
@@ -98,3 +98,9 @@ The mawaqit provider extracts from the page:
 
 - `./data` → `/app/data` — shared SQLite database
 - `cron-data` → `/etc/cron.d` — shared crontab between web and adhan containers
+
+## OwnTone install modes
+
+The `owntone` service in [docker-compose.yml](docker-compose.yml) sits behind a `bundled` profile. `make up` reads `config.OWNTONE_MODE` from SQLite (defaults to `local` when no DB exists yet) and only sets `COMPOSE_PROFILES=bundled` when the user picked the "Simple" install path. With `--remove-orphans`, switching mode and re-running `make up` actually stops/starts the OwnTone container — no manual intervention needed.
+
+Setup wizard captures the mode at install time. The mode can also be toggled later by editing `config.OWNTONE_MODE` (currently only via `/api/config` POST or directly in SQLite — no toggle in Settings yet).

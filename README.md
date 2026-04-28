@@ -51,8 +51,14 @@ Open **http://localhost:8080** — the setup wizard guides you through configura
 
 ### Setup Wizard
 On first launch, the UI asks for:
+- **Admin account** — username, password, avatar emoji (also creates a tracking user)
 - **Mosque URL** — your mosque's mawaqit.net page (validated live with prayer preview)
-- **Sound alerts** — enable/disable, custom audio file upload
+- **Sound alerts** — enable/disable
+- **OwnTone install mode** (only if sound alerts are enabled):
+  - **Simple** — the bundled OwnTone container is started with the project (recommended for new users)
+  - **External** — connect to your own OwnTone server (host/port asked here)
+
+The OwnTone choice is persisted in SQLite (`config.OWNTONE_MODE`). `make up` reads it and toggles the bundled service on/off (via a Compose profile), so picking "external" actually saves RAM — no orphaned container.
 
 ### Settings
 All configuration is editable via the gear icon on the dashboard. Changes are saved to SQLite and the crontab is regenerated automatically.

@@ -380,7 +380,8 @@ class SetupPayload(BaseModel):
     emoji: str = "🙂"
     mosque_url: str
     sound_enabled: str = "false"
-    owntone_host: str = ""
+    owntone_mode: str = "local"            # "local" (bundled service) or "external"
+    owntone_host: str = "host.docker.internal"
     owntone_port: str = "3689"
     adhan_file: str = "/srv/media/adhan.mp3"
     adhan_volume: str = "40"
@@ -416,8 +417,17 @@ async def api_setup(data: SetupPayload, response: Response):
     set_value('config', 'MOSQUE_URL', data.mosque_url)
     set_value('config', 'SOUND_ENABLED', data.sound_enabled)
     set_value('config', 'LOG_LEVEL', data.log_level)
-    set_value('owntone', 'HOST', data.owntone_host)
-    set_value('owntone', 'PORT', data.owntone_port)
+
+    # OwnTone: in "local" mode we ignore user inputs and force the bundled defaults.
+    # In "external" mode we trust whatever host/port the user typed.
+    owntone_mode = data.owntone_mode if data.owntone_mode in ('local', 'external') else 'local'
+    set_value('config', 'OWNTONE_MODE', owntone_mode)
+    if owntone_mode == 'local':
+        set_value('owntone', 'HOST', 'host.docker.internal')
+        set_value('owntone', 'PORT', '3689')
+    else:
+        set_value('owntone', 'HOST', (data.owntone_host or '').strip() or 'host.docker.internal')
+        set_value('owntone', 'PORT', (data.owntone_port or '').strip() or '3689')
     set_value('owntone', 'ADHAN_FILE', data.adhan_file)
     set_value('owntone', 'ADHAN_VOLUME', data.adhan_volume)
 
