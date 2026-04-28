@@ -93,11 +93,15 @@
       <div class="form-section">
         <h2>Compte administrateur</h2>
         <p style="font-size:0.8rem;color:var(--text-dark-muted);margin-bottom:0.8rem">
-          Choisissez un identifiant et un mot de passe pour protéger l'accès aux paramètres.
+          Choisissez un avatar, un identifiant et un mot de passe. L'avatar sera utilisé pour le suivi des prières.
         </p>
         <div class="form-group">
           <label for="setup_username">Identifiant</label>
-          <input type="text" id="setup_username" autocomplete="username" placeholder="ex: admin" minlength="3" required>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <button type="button" class="emoji-pick-btn" id="setup-emoji-btn">🙂</button>
+            <input type="hidden" id="setup_emoji" value="🙂">
+            <input type="text" id="setup_username" autocomplete="username" placeholder="ex: admin" minlength="3" required style="flex:1">
+          </div>
         </div>
         <div class="form-group">
           <label for="setup_password">Mot de passe (8 caractères minimum)</label>
@@ -107,6 +111,7 @@
           <label for="setup_password_confirm">Confirmer le mot de passe</label>
           <input type="password" id="setup_password_confirm" autocomplete="new-password" minlength="8" required>
         </div>
+        <div class="emoji-picker" id="emoji-picker" style="display:none"></div>
         <div id="account-error" class="msg msg-error" style="display:none;margin-top:0.5rem"></div>
       </div>
       <div class="actions">
@@ -188,14 +193,26 @@
     </div>
   </div>
 
+  <script src="/static/emoji_picker.js"></script>
   <script>
     const setupData = {
       username: '',
       password: '',
+      emoji: '🙂',
       mosque_url: '',
       sound_enabled: 'false',
       city: '',
     };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const emojiBtn = document.getElementById('setup-emoji-btn');
+      const emojiHidden = document.getElementById('setup_emoji');
+      const picker = document.getElementById('emoji-picker');
+      attachEmojiPicker(emojiBtn, picker, (emoji) => {
+        emojiHidden.value = emoji;
+        setupData.emoji = emoji;
+      });
+    });
 
     function goToStep(n) {
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));

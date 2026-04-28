@@ -19,6 +19,11 @@
 - [ ] **Réécrire `adhan.sh` en Python** pour supprimer `load_config.py`/`get_homepods.py`/le shell escaping via `eval`
 - [ ] **Multi-stage Dockerfile pour le container `adhan`** — image ~800MB aujourd'hui (1.1GB en `AUTONOMOUS=true`)
 
+- [ ] **Activer `PRAGMA foreign_keys = ON` dans `_connect()`**
+  - SQLite ne force pas les FK par défaut, donc `ON DELETE SET NULL` / `ON DELETE CASCADE` sont descriptifs uniquement
+  - Conséquence concrète : supprimer un user laisse `auth.user_id` orphelin (cosmétique mais sale)
+  - Activer PRAGMA + auditer toutes les FK déclarées avant merge
+
 ### Page stats — améliorations futures
 
 - [ ] Filtrer la heatmap par mois (pas seulement année)

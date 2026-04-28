@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS auth (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT    UNIQUE NOT NULL,
     password_hash TEXT    NOT NULL,
+    user_id       INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at    TEXT    DEFAULT (datetime('now'))
 );
 
@@ -198,6 +199,18 @@ def _migrate_hash_tokens(conn):
         pass
 
 
+def _migrate_auth_user_id(conn):
+    """Add user_id column to auth if missing (links admin to a tracking user)."""
+    try:
+        cur = conn.execute("PRAGMA table_info(auth)")
+        columns = [row[1] for row in cur.fetchall()]
+        if 'user_id' not in columns:
+            conn.execute("ALTER TABLE auth ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE SET NULL")
+            conn.commit()
+    except Exception:
+        pass
+
+
 def init_db():
     db_path = get_db_path()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -208,4 +221,5 @@ def init_db():
     _migrate_alert_columns(conn)
     _migrate_token_scope(conn)
     _migrate_hash_tokens(conn)
+    _migrate_auth_user_id(conn)
     conn.close()

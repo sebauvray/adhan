@@ -377,6 +377,7 @@ async def api_get_config():
 class SetupPayload(BaseModel):
     username: str
     password: str
+    emoji: str = "🙂"
     mosque_url: str
     sound_enabled: str = "false"
     owntone_host: str = ""
@@ -388,18 +389,21 @@ class SetupPayload(BaseModel):
 
 @app.post("/api/setup")
 async def api_setup(data: SetupPayload, response: Response):
-    """First-launch setup: creates the admin account, saves base config, opens a session."""
+    """First-launch setup: creates the admin account, saves base config, opens a session.
+    Also creates a tracking user (same name, chosen emoji) and links it to the admin."""
     if has_auth():
         raise HTTPException(status_code=409, detail="Configuration déjà initialisée")
 
     username = (data.username or '').strip()
     password = data.password or ''
+    emoji = (data.emoji or '🙂').strip() or '🙂'
     if len(username) < 3:
         raise HTTPException(status_code=400, detail="Identifiant trop court (3 caractères minimum)")
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Mot de passe trop court (8 caractères minimum)")
 
-    create_auth(username, password)
+    tracking_user_id = create_user(username, emoji)
+    create_auth(username, password, user_id=tracking_user_id)
 
     try:
         mawaqit_data = get_full_data(data.mosque_url)

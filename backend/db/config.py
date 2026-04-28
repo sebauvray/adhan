@@ -94,14 +94,15 @@ def has_auth():
         return False
 
 
-def create_auth(username, password):
-    """Create the admin account. password is hashed with bcrypt."""
+def create_auth(username, password, user_id=None):
+    """Create the admin account. password is hashed with bcrypt.
+    Optionally link this admin to a tracking user (`users` table)."""
     import bcrypt
     pw_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     conn = _connect()
     conn.execute(
-        "INSERT INTO auth (username, password_hash) VALUES (?, ?)",
-        (username, pw_hash)
+        "INSERT INTO auth (username, password_hash, user_id) VALUES (?, ?, ?)",
+        (username, pw_hash, user_id)
     )
     conn.commit()
     conn.close()

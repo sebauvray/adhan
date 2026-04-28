@@ -101,7 +101,7 @@
           <h2>Utilisateurs</h2>
           <div id="users-list"></div>
           <div class="user-add-form">
-            <button type="button" class="emoji-pick-btn" id="new-user-emoji-btn" onclick="toggleEmojiPicker(this)">🙂</button>
+            <button type="button" class="emoji-pick-btn" id="new-user-emoji-btn">🙂</button>
             <input type="hidden" id="new-user-emoji" value="🙂">
             <input type="text" id="new-user-name" placeholder="Nom" class="user-name-input" onkeydown="if(event.key==='Enter')addUser()">
             <button type="button" class="btn btn-action btn-sm" onclick="addUser()">+</button>
@@ -181,6 +181,7 @@
   </div>
 
   <script src="/static/app.js"></script>
+  <script src="/static/emoji_picker.js"></script>
   <script>
     // --- Auto-save per field ---
 
@@ -288,6 +289,9 @@
 
       // Prayer outputs
       loadPrayerOutputs();
+
+      // Emoji picker for the "add user" form (rows are bound after loadUsers)
+      bindNewUserEmojiPicker();
 
       // Users
       loadUsers();
@@ -511,50 +515,21 @@
       }
     }
 
-    // --- Emoji Picker ---
+    // --- Emoji Picker (uses /static/emoji_picker.js) ---
 
-    const EMOJI_LIST = [
-      '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊',
-      '😇','🥰','😍','🤩','😎','🤓','🧐','🤠','🥳','😏',
-      '😺','🐶','🐱','🦁','🐯','🐻','🐼','🐸','🐵','🦊',
-      '🦄','🐝','🦋','🐢','🐙','🦈','🐬','🦅','🦉','🐧',
-      '🌟','⭐','🌙','☀️','🔥','💧','❄️','🌈','🍀','🌸',
-      '🏀','⚽','🎯','🎮','🎸','🎨','📚','💻','🚀','✈️',
-      '👨','👩','👦','👧','👶','🧔','👳','👲','🧕','👼',
-    ];
+    const sharedPicker = document.getElementById('emoji-picker');
 
-    let activePickerTarget = null;
-
-    function toggleEmojiPicker(btn) {
-      const picker = document.getElementById('emoji-picker');
-      if (picker.style.display !== 'none' && activePickerTarget === btn) {
-        picker.style.display = 'none';
-        activePickerTarget = null;
-        return;
-      }
-      activePickerTarget = btn;
-      picker.innerHTML = EMOJI_LIST.map(e =>
-        `<button type="button" class="emoji-option" onclick="selectEmoji('${e}')">${e}</button>`
-      ).join('');
-      picker.style.display = 'grid';
+    function bindNewUserEmojiPicker() {
+      const btn = document.getElementById('new-user-emoji-btn');
+      const hidden = document.getElementById('new-user-emoji');
+      attachEmojiPicker(btn, sharedPicker, (emoji) => { hidden.value = emoji; });
     }
 
-    function selectEmoji(emoji) {
-      if (activePickerTarget) {
-        activePickerTarget.textContent = emoji;
-        // Update the hidden input or data attribute
-        const hiddenInput = activePickerTarget.id === 'new-user-emoji-btn'
-          ? document.getElementById('new-user-emoji')
-          : null;
-        if (hiddenInput) hiddenInput.value = emoji;
-        // If editing existing user
-        const userId = activePickerTarget.dataset.userId;
-        if (userId) {
-          updateUserEmoji(parseInt(userId), emoji);
-        }
-      }
-      document.getElementById('emoji-picker').style.display = 'none';
-      activePickerTarget = null;
+    function bindUserRowEmojiPickers() {
+      document.querySelectorAll('.user-item .emoji-pick-btn[data-user-id]').forEach(btn => {
+        const userId = parseInt(btn.dataset.userId);
+        attachEmojiPicker(btn, sharedPicker, (emoji) => updateUserEmoji(userId, emoji));
+      });
     }
 
     async function updateUserEmoji(userId, emoji) {
@@ -577,11 +552,12 @@
         const data = await resp.json();
         container.innerHTML = (data.users || []).map(u => `
           <div class="user-item" data-id="${u.id}">
-            <button type="button" class="emoji-pick-btn" data-user-id="${u.id}" onclick="toggleEmojiPicker(this)">${u.emoji}</button>
+            <button type="button" class="emoji-pick-btn" data-user-id="${u.id}">${u.emoji}</button>
             <span class="user-name">${u.name}</span>
             <button type="button" class="remove-btn" onclick="deleteUser(${u.id})" title="Supprimer">&times;</button>
           </div>
         `).join('') || '<p style="font-size:0.8rem;color:var(--text-dark-muted)">Aucun utilisateur</p>';
+        bindUserRowEmojiPickers();
       } catch (e) {
         container.innerHTML = '<p style="font-size:0.8rem;color:#c53030">Erreur</p>';
       }
