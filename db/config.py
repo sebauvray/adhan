@@ -1,11 +1,16 @@
 import sqlite3
 import secrets
+import hashlib
 from collections import defaultdict
 from db.schema import get_db_path
 
 
 def _connect():
     return sqlite3.connect(get_db_path())
+
+
+def _hash_token(token):
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
 
 
 def get_value(table, key, default=None):
@@ -72,23 +77,25 @@ def is_configured():
     return bool(url)
 
 
-def get_token():
+def has_token():
+    """Return True if at least one API token exists."""
     try:
         conn = _connect()
-        cur = conn.execute("SELECT token FROM api_tokens LIMIT 1")
-        row = cur.fetchone()
+        cur = conn.execute("SELECT 1 FROM api_tokens LIMIT 1")
+        exists = cur.fetchone() is not None
         conn.close()
-        return row[0] if row else None
+        return exists
     except Exception:
-        return None
+        return False
 
 
 def create_token(description="default", scope="admin", user_id=None):
+    """Create a new API token. Returns the plaintext value once; only its hash is stored."""
     token = secrets.token_urlsafe(32)
     conn = _connect()
     conn.execute(
         "INSERT INTO api_tokens (token, description, scope, user_id) VALUES (?, ?, ?, ?)",
-        (token, description, scope, user_id)
+        (_hash_token(token), description, scope, user_id)
     )
     conn.commit()
     conn.close()
@@ -103,7 +110,7 @@ def validate_token(token):
         conn = _connect()
         cur = conn.execute(
             "SELECT id, scope, user_id, description FROM api_tokens WHERE token = ?",
-            (token,)
+            (_hash_token(token),)
         )
         row = cur.fetchone()
         conn.close()

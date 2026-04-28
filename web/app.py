@@ -16,7 +16,7 @@ sys.path.insert(0, '/app')
 from db.schema import init_db
 from db.config import (
     get_value, set_value, get_all, get_homepods, set_homepods,
-    is_configured, get_token, create_token, validate_token,
+    is_configured, has_token, create_token, validate_token,
     list_tokens, delete_token,
     get_prayer_outputs, set_prayer_outputs,
     get_all_prayer_volumes, set_prayer_volume,
@@ -358,27 +358,14 @@ async def api_setup(data: ConfigPayload):
     await _save_config(data)
 
     # Générer le token au premier setup
-    token = get_token()
     new_token = None
-    if not token:
+    if not has_token():
         new_token = create_token("setup")
 
     # Déclencher le premier fetch des horaires
     subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
 
     return {"success": True, "token": new_token}
-
-
-@app.post("/api/config")
-async def api_update_config(data: ConfigPayload, authorization: Optional[str] = Header(None)):
-    _require_token(authorization, ["admin"])
-
-    await _save_config(data)
-
-    # Relancer le fetch pour mettre à jour le crontab
-    subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
-
-    return {"success": True}
 
 
 @app.post("/api/refresh")
@@ -414,9 +401,11 @@ async def api_outputs():
         raise HTTPException(status_code=502, detail=f"OwnTone inaccessible : {type(e).__name__}")
 
 
-@app.post("/api/config-field")
-async def api_config_field(payload: dict):
+@app.post("/api/config")
+async def api_config(payload: dict, authorization: Optional[str] = Header(None)):
     """Save a single config field. Expects {table, key, value}."""
+    _require_token(authorization, ["admin"])
+
     table = payload.get('table')
     key = payload.get('key')
     value = payload.get('value', '')
@@ -424,7 +413,7 @@ async def api_config_field(payload: dict):
         raise HTTPException(status_code=400, detail="table and key required")
     set_value(table, key, value)
 
-    # If mosque URL changed, refresh lat/lng/city
+    # If mosque URL changed, refresh lat/lng/city and regenerate crontab
     if table == 'config' and key == 'MOSQUE_URL' and value:
         try:
             data = get_full_data(value)
@@ -433,6 +422,7 @@ async def api_config_field(payload: dict):
             set_value('config', 'CITY', data.get('city', ''))
         except Exception:
             pass
+        subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
 
     return {"success": True}
 

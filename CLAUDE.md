@@ -49,7 +49,7 @@ Two Docker containers share a SQLite database and a cron volume:
 - `GET /api/prayers` — prayer data with status (past/current/upcoming) + iqama + next prayer countdown
 - `GET /api/weather` — Open-Meteo weather from stored lat/lng
 - `POST /api/setup` — first-time config, returns generated API token
-- `POST /api/config` — update config (requires Bearer token)
+- `POST /api/config` — update a single config field `{table, key, value}` (requires Bearer admin token)
 - `POST /api/refresh` — re-run get_time_salat.py (requires Bearer token)
 - `POST /api/validate-url` — validate mawaqit URL, returns prayer preview
 - `GET/POST /api/users` — list/create users

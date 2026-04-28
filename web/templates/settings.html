@@ -74,15 +74,6 @@
         </details>
 
         <div class="form-section">
-          <h2>Authentification</h2>
-          <div class="form-group">
-            <label for="api_token">Token admin (cette interface)</label>
-            <span class="save-indicator" id="save-api_token">Sauvegardé</span>
-            <input type="text" id="api_token" placeholder="Collez votre token admin ici">
-          </div>
-        </div>
-
-        <div class="form-section">
           <h2>Tokens API externes</h2>
           <p style="font-size:0.75rem;color:var(--text-dark-muted);margin-bottom:0.6rem">
             Tokens scope <code>prayers</code> pour valider/lire les prières d'un utilisateur depuis une app externe.
@@ -193,7 +184,7 @@
   <script>
     // --- Auto-save per field ---
 
-    const API_CONFIG_FIELD = '/api/config-field';
+    const API_CONFIG = '/api/config';
 
     function showSaved(inputEl) {
       inputEl.classList.add('saved');
@@ -212,7 +203,7 @@
 
     async function saveField(table, key, value) {
       const token = localStorage.getItem('adhan_token');
-      await fetch(API_CONFIG_FIELD, {
+      await fetch(API_CONFIG, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -292,21 +283,6 @@
         multiDayToggle.addEventListener('change', async () => {
           await saveField('config', 'MULTI_DAY_DISPLAY', multiDayToggle.checked ? 'true' : 'false');
           showSaved(multiDayToggle);
-        });
-      }
-
-      // Token (local only)
-      const stored = localStorage.getItem('adhan_token');
-      const tokenInput = document.getElementById('api_token');
-      if (stored && tokenInput) tokenInput.value = stored;
-      if (tokenInput) {
-        let origToken = stored || '';
-        tokenInput.addEventListener('focus', () => { origToken = tokenInput.value; });
-        tokenInput.addEventListener('blur', () => {
-          if (tokenInput.value !== origToken) {
-            localStorage.setItem('adhan_token', tokenInput.value);
-            showSaved(tokenInput);
-          }
         });
       }
 

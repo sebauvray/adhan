@@ -572,32 +572,6 @@ async function submitSetup(event) {
 
 /* === Settings Page JavaScript === */
 
-async function loadConfig() {
-  const form = document.getElementById('settings-form');
-  if (!form) return;
-
-  try {
-    const resp = await fetch('/api/config');
-    if (resp.ok) {
-      const data = await resp.json();
-      Object.entries(data).forEach(([key, value]) => {
-        const input = form.querySelector(`[name="${key}"]`);
-        if (!input) return;
-        if (input.type === 'checkbox') {
-          input.checked = value === 'true';
-          input.dispatchEvent(new Event('change'));
-        } else if (typeof value === 'string') {
-          input.value = value;
-        }
-      });
-      // Build OwnTone link
-      updateOwntoneLink();
-    }
-  } catch (e) {
-    console.error('Erreur chargement config:', e);
-  }
-}
-
 function updateOwntoneLink() {
   const portInput = document.getElementById('owntone_port');
   const link = document.getElementById('owntone-link');
@@ -607,58 +581,10 @@ function updateOwntoneLink() {
   link.href = `http://${window.location.hostname}:${port}`;
 }
 
-async function submitSettings(event) {
-  event.preventDefault();
-  const form = event.target;
-  const msgEl = document.getElementById('settings-msg');
-  const token = localStorage.getItem('adhan_token');
-
-  if (!token) {
-    msgEl.innerHTML = 'Token API manquant. Entrez-le ci-dessous.';
-    msgEl.className = 'msg msg-error';
-    return;
-  }
-
-  const data = {};
-  new FormData(form).forEach((v, k) => { data[k] = v; });
-
-  msgEl.innerHTML = 'Sauvegarde<span class="spinner"></span>';
-  msgEl.className = 'msg';
-
-  try {
-    const resp = await fetch('/api/config', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (resp.status === 401) {
-      msgEl.innerHTML = 'Token invalide';
-      msgEl.className = 'msg msg-error';
-      return;
-    }
-
-    const result = await resp.json();
-    if (result.success) {
-      // Also save prayer outputs if available
-      if (typeof savePrayerOutputs === 'function') await savePrayerOutputs();
-      msgEl.innerHTML = 'Configuration mise à jour. Les horaires seront recalculés.';
-      msgEl.className = 'msg msg-success';
-    }
-  } catch (e) {
-    msgEl.innerHTML = 'Erreur de connexion';
-    msgEl.className = 'msg msg-error';
-  }
-}
-
 /* === Init === */
 
 document.addEventListener('DOMContentLoaded', () => {
   initDashboard();
-  loadConfig();
 
   // Live update OwnTone link when typing
   const otHost = document.getElementById('owntone_host');

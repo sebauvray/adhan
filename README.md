@@ -127,8 +127,7 @@ Override in `.env` without touching Dockerfiles:
 | `GET` | `/api/outputs` | — | Available AirPlay speakers |
 | `GET` | `/api/prayer-outputs` | — | Speaker config per prayer |
 | `POST` | `/api/setup` | — | Initial setup (returns admin API token) |
-| `POST` | `/api/config` | Bearer `admin` | Update configuration |
-| `POST` | `/api/config-field` | — | Update a single config field |
+| `POST` | `/api/config` | Bearer `admin` | Update a single config field (`{table, key, value}`) |
 | `POST` | `/api/refresh` | Bearer `admin` | Force prayer time re-fetch |
 | `POST` | `/api/validate-url` | — | Validate a mawaqit.net URL |
 | `POST` | `/api/prayer-outputs` | — | Save speaker config per prayer |

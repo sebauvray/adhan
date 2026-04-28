@@ -189,6 +189,23 @@ def _migrate_token_scope(conn):
         pass
 
 
+def _migrate_hash_tokens(conn):
+    """Hash any plaintext tokens left in the api_tokens table.
+    A SHA-256 hex digest is exactly 64 characters; anything else is plaintext."""
+    import hashlib
+    try:
+        cur = conn.execute("SELECT id, token FROM api_tokens")
+        rows = cur.fetchall()
+        for token_id, value in rows:
+            if not value or (len(value) == 64 and all(c in '0123456789abcdef' for c in value)):
+                continue
+            hashed = hashlib.sha256(value.encode('utf-8')).hexdigest()
+            conn.execute("UPDATE api_tokens SET token = ? WHERE id = ?", (hashed, token_id))
+        conn.commit()
+    except Exception:
+        pass
+
+
 def init_db():
     db_path = get_db_path()
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -199,4 +216,5 @@ def init_db():
     _migrate_homepod_json(conn)
     _migrate_alert_columns(conn)
     _migrate_token_scope(conn)
+    _migrate_hash_tokens(conn)
     conn.close()
