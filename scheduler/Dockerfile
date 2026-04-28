@@ -40,7 +40,7 @@ RUN if [ "$AUTONOMOUS" = "true" ]; then \
     fi
 
 # Dépendances Python
-COPY docker/requirements.txt .
+COPY scheduler/requirements.txt .
 RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt \
     && if [ "$AUTONOMOUS" = "true" ]; then \
          pip3 install --no-cache-dir --break-system-packages selenium; \
@@ -52,17 +52,17 @@ COPY backend/db        /app/db
 COPY backend/providers /app/providers
 
 # Scheduler scripts
-COPY ./get_time_salat.py /app/get_time_salat.py
-COPY ./load_config.py    /app/load_config.py
-COPY ./get_homepods.py   /app/get_homepods.py
-COPY ./adhan.sh          /app/adhan.sh
+COPY scheduler/get_time_salat.py /app/get_time_salat.py
+COPY scheduler/load_config.py    /app/load_config.py
+COPY scheduler/get_homepods.py   /app/get_homepods.py
+COPY scheduler/adhan.sh          /app/adhan.sh
 RUN chmod +x /app/adhan.sh
 
 # Cron
-COPY ./salat.crontab /etc/cron.d/salat
+COPY scheduler/salat.crontab /etc/cron.d/salat
 RUN touch /var/log/cron.log
 
 # Entrypoint
-COPY ./startup.sh /opt/startup.sh
+COPY scheduler/startup.sh /opt/startup.sh
 RUN chmod +x /opt/startup.sh
 CMD ["/opt/startup.sh"]

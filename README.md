@@ -71,15 +71,15 @@ adhan/
 │   ├── cli/                # admin_reset.py recovery tool
 │   ├── Dockerfile
 │   └── requirements.txt
-├── docker/                 # Adhan (cron) container — to be moved into scheduler/
-│   ├── dockerfile
+├── scheduler/              # Cron container that fires the adhan
+│   ├── adhan.sh            # Plays adhan on OwnTone for one prayer
+│   ├── get_time_salat.py   # Fetch prayer times → SQLite → crontab
+│   ├── load_config.py      # SQLite → shell env bridge
+│   ├── get_homepods.py     # SQLite → speaker list for a prayer
+│   ├── salat.crontab       # Initial crontab (refresh job)
+│   ├── startup.sh          # Container entrypoint
+│   ├── Dockerfile
 │   └── requirements.txt
-├── adhan.sh                # Cron script: plays adhan on OwnTone
-├── get_time_salat.py       # Fetch prayer times → SQLite → crontab
-├── load_config.py          # SQLite → shell env bridge
-├── get_homepods.py         # SQLite → speaker list for a prayer
-├── salat.crontab           # Initial crontab (refresh job)
-├── startup.sh              # Adhan container entrypoint
 ├── owntone/                # OwnTone sidecar (entrypoint + persistence)
 ├── docker-compose.yml
 ├── Makefile

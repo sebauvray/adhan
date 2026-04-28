@@ -35,7 +35,7 @@ services:
   adhan:
     build:
       context: .
-      dockerfile: docker/dockerfile
+      dockerfile: scheduler/Dockerfile
       args:
         - DEBIAN_VERSION=${DEBIAN_VERSION:-bookworm}
         - GECKODRIVER_VERSION=${GECKODRIVER_VERSION:-v0.34.0}

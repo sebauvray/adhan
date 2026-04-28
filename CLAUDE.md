@@ -29,10 +29,12 @@ Two Docker containers share a SQLite database and a cron volume:
 | `backend/cli/admin_reset.py` | CLI for admin account recovery (run via `docker exec`) |
 | `frontend/templates/` | Jinja2 HTML (dashboard, login, setup, settings, stats) |
 | `frontend/static/` | CSS, JS, images, weather icons |
-| `get_time_salat.py` | Router: reads config from SQLite, calls provider, writes crontab |
-| `adhan.sh` | Cron script: loads config via `load_config.py`, plays audio |
-| `load_config.py` | SQLite → shell exports (for adhan.sh) |
-| `get_homepods.py` | SQLite → HomePod names for a period (for adhan.sh) |
+| `scheduler/get_time_salat.py` | Reads config from SQLite, calls provider, writes crontab |
+| `scheduler/adhan.sh` | Cron script: loads config via `load_config.py`, plays audio |
+| `scheduler/load_config.py` | SQLite → shell exports (for adhan.sh) |
+| `scheduler/get_homepods.py` | SQLite → HomePod names for a period (for adhan.sh) |
+| `scheduler/startup.sh` | Container entrypoint (runs cron in foreground) |
+| `scheduler/salat.crontab` | Initial crontab template |
 
 ## Data Storage
 
