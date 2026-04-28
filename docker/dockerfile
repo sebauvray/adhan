@@ -47,18 +47,16 @@ RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt \
        fi \
     && rm requirements.txt
 
-# Module DB
-COPY ./db /app/db
+# Backend module shared with the API container (DB + providers)
+COPY backend/db        /app/db
+COPY backend/providers /app/providers
 
-# Scripts
+# Scheduler scripts
 COPY ./get_time_salat.py /app/get_time_salat.py
 COPY ./load_config.py    /app/load_config.py
 COPY ./get_homepods.py   /app/get_homepods.py
 COPY ./adhan.sh          /app/adhan.sh
 RUN chmod +x /app/adhan.sh
-
-# Providers
-COPY ./providers /app/providers
 
 # Cron
 COPY ./salat.crontab /etc/cron.d/salat

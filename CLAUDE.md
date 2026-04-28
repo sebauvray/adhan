@@ -20,17 +20,19 @@ Two Docker containers share a SQLite database and a cron volume:
 
 | File | Role |
 |------|------|
-| `web/app.py` | FastAPI app — API endpoints + page routing |
-| `db/schema.py` | SQLite init + env→db migration |
-| `db/config.py` | CRUD helpers for config tables + token management |
-| `providers/mawaqit_http_provider.py` | HTTP fetch of confData (adhan + iqama + coords) |
-| `providers/mawaqit_selenium_provider.py` | Selenium fallback for mawaqit |
-| `providers/custom_selenium_provider.py` | [CONCEPT] Scrape any mosque site |
+| `backend/app.py` | FastAPI app — API endpoints + page routing |
+| `backend/db/schema.py` | SQLite init + env→db migration |
+| `backend/db/config.py` | CRUD helpers for config tables + token management |
+| `backend/providers/mawaqit_http_provider.py` | HTTP fetch of confData (adhan + iqama + coords) |
+| `backend/providers/mawaqit_selenium_provider.py` | Selenium fallback for mawaqit |
+| `backend/providers/custom_selenium_provider.py` | [CONCEPT] Scrape any mosque site |
+| `backend/cli/admin_reset.py` | CLI for admin account recovery (run via `docker exec`) |
+| `frontend/templates/` | Jinja2 HTML (dashboard, login, setup, settings, stats) |
+| `frontend/static/` | CSS, JS, images, weather icons |
 | `get_time_salat.py` | Router: reads config from SQLite, calls provider, writes crontab |
 | `adhan.sh` | Cron script: loads config via `load_config.py`, plays audio |
 | `load_config.py` | SQLite → shell exports (for adhan.sh) |
 | `get_homepods.py` | SQLite → HomePod names for a period (for adhan.sh) |
-| `admin_reset.py` | CLI for admin account recovery (run via `docker exec`) |
 
 ## Data Storage
 
@@ -52,7 +54,7 @@ Two parallel mechanisms guard admin endpoints:
 - **Session cookie** (`adhan_session`, HttpOnly, SameSite=Strict, 30d) issued by `POST /api/login` → for the web UI
 - **Bearer admin token** (`Authorization: Bearer …`, scope `admin`) for non-browser clients (Home Assistant, scripts)
 
-`_require_admin()` in [web/app.py](web/app.py) accepts either. Public endpoints stay public (dashboard data); only admin actions and `/api/prayer-logs/me` require auth.
+`_require_admin()` in [backend/app.py](backend/app.py) accepts either. Public endpoints stay public (dashboard data); only admin actions and `/api/prayer-logs/me` require auth.
 
 The `prayers`-scoped Bearer token (one per user) is for external apps that only log/read prayers — it never grants config access.
 

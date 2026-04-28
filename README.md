@@ -61,28 +61,32 @@ All configuration is editable via the gear icon on the dashboard. Changes are sa
 
 ```
 adhan/
-├── web/                    # FastAPI web service
-│   ├── app.py              # API + Jinja2 templates
-│   ├── dockerfile
-│   ├── static/             # CSS + JS
-│   └── templates/          # Dashboard, Setup, Settings
-├── db/                     # SQLite module
-│   ├── schema.py           # DB init + migrations
-│   └── config.py           # CRUD helpers
-├── providers/              # Prayer time fetchers
-│   ├── mawaqit_http_provider.py      # HTTP (default)
-│   ├── mawaqit_selenium_provider.py  # Selenium fallback
-│   └── custom_selenium_provider.py   # [concept] any site
-├── docker/
-│   ├── dockerfile          # Adhan container
+├── frontend/               # Web UI served by the backend
+│   ├── static/             # CSS, JS, weather icons, logo
+│   └── templates/          # HTML (dashboard, login, setup, settings, stats)
+├── backend/                # FastAPI API + persistence
+│   ├── app.py              # Routes & endpoints
+│   ├── db/                 # SQLite schema + CRUD helpers
+│   ├── providers/          # Mawaqit HTTP + Selenium fallback
+│   ├── cli/                # admin_reset.py recovery tool
+│   ├── Dockerfile
 │   └── requirements.txt
-├── adhan.sh                # Cron script: volume + play on HomePods
-├── get_time_salat.py       # Fetch → SQLite → crontab
+├── docker/                 # Adhan (cron) container — to be moved into scheduler/
+│   ├── dockerfile
+│   └── requirements.txt
+├── adhan.sh                # Cron script: plays adhan on OwnTone
+├── get_time_salat.py       # Fetch prayer times → SQLite → crontab
 ├── load_config.py          # SQLite → shell env bridge
 ├── get_homepods.py         # SQLite → speaker list for a prayer
+├── salat.crontab           # Initial crontab (refresh job)
+├── startup.sh              # Adhan container entrypoint
+├── owntone/                # OwnTone sidecar (entrypoint + persistence)
 ├── docker-compose.yml
 ├── Makefile
-└── .env_example
+├── .env_example
+├── README.md
+├── CLAUDE.md
+└── TODO.md
 ```
 
 ### Data Flow
