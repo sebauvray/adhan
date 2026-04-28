@@ -52,7 +52,6 @@ COPY ./db /app/db
 
 # Scripts
 COPY ./get_time_salat.py /app/get_time_salat.py
-COPY ./next_salat.py     /app/next_salat.py
 COPY ./load_config.py    /app/load_config.py
 COPY ./get_homepods.py   /app/get_homepods.py
 COPY ./adhan.sh          /app/adhan.sh
@@ -60,9 +59,6 @@ RUN chmod +x /app/adhan.sh
 
 # Providers
 COPY ./providers /app/providers
-
-# HomePod.json (migration legacy vers SQLite)
-COPY ./HomePod.json /app/HomePod.json
 
 # Cron
 COPY ./salat.crontab /etc/cron.d/salat

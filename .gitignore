@@ -5,3 +5,4 @@ __pycache__/
 owntone/cache/
 .DS_Store
 Thumbs.db
+.claude/

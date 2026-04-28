@@ -1,6 +1,5 @@
 import sqlite3
 import os
-import json
 
 DB_PATH = os.environ.get('DB_PATH', '/app/data/adhan.db')
 
@@ -92,29 +91,6 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 def get_db_path():
     return os.environ.get('DB_PATH', '/app/data/adhan.db')
-
-
-def _migrate_homepod_json(conn):
-    """Migre HomePod.json vers la table homepods si elle est vide."""
-    homepod_file = os.environ.get('HOMEPOD_FILE', '/app/HomePod.json')
-    if not os.path.exists(homepod_file):
-        return
-    cur = conn.execute("SELECT COUNT(*) FROM homepods")
-    if cur.fetchone()[0] > 0:
-        return
-    try:
-        with open(homepod_file) as f:
-            data = json.load(f)
-        for pod in data.get('ListHomePod', []):
-            conn.execute(
-                "INSERT OR IGNORE INTO homepods (name, morning, afternoon, evening) VALUES (?, ?, ?, ?)",
-                (pod['name'], int(pod.get('morning', False)),
-                 int(pod.get('afternoon', True)), int(pod.get('evening', False)))
-            )
-        conn.commit()
-        print(f"Migration HomePod.json → SQLite : {len(data.get('ListHomePod', []))} appareils importés")
-    except Exception as e:
-        print(f"Avertissement migration HomePod.json : {e}")
 
 
 def _migrate_env_to_db(conn):
@@ -229,7 +205,6 @@ def init_db():
     conn.executescript(SCHEMA)
     _ensure_defaults(conn)
     _migrate_env_to_db(conn)
-    _migrate_homepod_json(conn)
     _migrate_alert_columns(conn)
     _migrate_token_scope(conn)
     _migrate_hash_tokens(conn)

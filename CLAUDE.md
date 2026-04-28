@@ -21,14 +21,13 @@ Two Docker containers share a SQLite database and a cron volume:
 | File | Role |
 |------|------|
 | `web/app.py` | FastAPI app — API endpoints + page routing |
-| `db/schema.py` | SQLite init + env→db + HomePod.json→db migrations |
+| `db/schema.py` | SQLite init + env→db migration |
 | `db/config.py` | CRUD helpers for config tables + token management |
 | `providers/mawaqit_http_provider.py` | HTTP fetch of confData (adhan + iqama + coords) |
 | `providers/mawaqit_selenium_provider.py` | Selenium fallback for mawaqit |
 | `providers/custom_selenium_provider.py` | [CONCEPT] Scrape any mosque site |
 | `get_time_salat.py` | Router: reads config from SQLite, calls provider, writes crontab |
 | `adhan.sh` | Cron script: loads config via `load_config.py`, plays audio |
-| `_archive/home_assistant.py` | [ARCHIVED] HA REST API client — awaiting use case definition |
 | `load_config.py` | SQLite → shell exports (for adhan.sh) |
 | `get_homepods.py` | SQLite → HomePod names for a period (for adhan.sh) |
 | `admin_reset.py` | CLI for admin account recovery (run via `docker exec`) |

@@ -18,7 +18,6 @@
 - [ ] **Tests sur les providers Mawaqit** — fixture HTML capturé + parser pour détecter les changements de markup
 - [ ] **Réécrire `adhan.sh` en Python** pour supprimer `load_config.py`/`get_homepods.py`/le shell escaping via `eval`
 - [ ] **Multi-stage Dockerfile pour le container `adhan`** — image ~800MB aujourd'hui (1.1GB en `AUTONOMOUS=true`)
-- [ ] **Supprimer le code mort `next_salat.py`** (remplacé par `/api/next-prayer`)
 
 ### Page stats — améliorations futures
 
