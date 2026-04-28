@@ -1,4 +1,4 @@
-.PHONY: help up down clean admin admin-list admin-create admin-reset admin-delete
+.PHONY: help up down clean open admin admin-list admin-create admin-reset admin-delete
 
 # Pick up CONTAINER_NAME_WEB (and any other override) from .env if present.
 ifneq (,$(wildcard .env))
@@ -7,6 +7,7 @@ export
 endif
 
 CONTAINER_WEB := $(or $(CONTAINER_NAME_WEB),adhan-web)
+WEB_PORT      := $(or $(WEB_PORT),8080)
 ADMIN_CLI     := docker exec -it $(CONTAINER_WEB) python3 /app/cli/admin_reset.py
 
 ## Afficher l'aide
@@ -17,6 +18,7 @@ help:
 	@echo "  up              Démarrer le projet (build + lancement)"
 	@echo "  down            Arrêter le projet"
 	@echo "  clean           Tout supprimer (volumes, images, base de données)"
+	@echo "  open            Ouvrir le dashboard dans le navigateur par défaut"
 	@echo ""
 	@echo "Compte admin (web container doit être up) :"
 	@echo "  admin           Menu interactif (list/create/reset/delete)"
@@ -36,6 +38,16 @@ down:
 ## Supprimer totalement le projet (volumes, images, données)
 clean:
 	docker compose down -v --rmi all
+
+## Ouvrir le dashboard dans le navigateur par défaut
+open:
+	@URL=http://localhost:$(WEB_PORT); \
+	case "$$(uname -s)" in \
+	  Darwin) open "$$URL" ;; \
+	  Linux)  xdg-open "$$URL" >/dev/null 2>&1 || echo "Ouvrez manuellement : $$URL" ;; \
+	  MINGW*|MSYS*|CYGWIN*) start "$$URL" ;; \
+	  *) echo "Ouvrez manuellement : $$URL" ;; \
+	esac
 
 ## Menu interactif de gestion des comptes admin
 admin:
