@@ -70,7 +70,7 @@ services:
       - UID=${CURRENT_UID:-1000}
       - GID=${CURRENT_GID:-1000}
     volumes:
-      - ./owntone-entrypoint.sh:/entrypoint.sh:ro
+      - ./owntone/entrypoint.sh:/entrypoint.sh:ro
       - owntone-etc:/etc/owntone
       - owntone-media:/srv/media
       - owntone-cache:/var/cache/owntone

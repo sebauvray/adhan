@@ -35,6 +35,7 @@ Two Docker containers share a SQLite database and a cron volume:
 | `scheduler/get_homepods.py` | SQLite → HomePod names for a period (for adhan.sh) |
 | `scheduler/startup.sh` | Container entrypoint (runs cron in foreground) |
 | `scheduler/salat.crontab` | Initial crontab template |
+| `owntone/entrypoint.sh` | OwnTone container entrypoint (fix UID/GID + start) |
 
 ## Data Storage
 
