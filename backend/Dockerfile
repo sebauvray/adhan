@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.
 COPY backend/app.py            /app/app.py
 COPY backend/scheduler.py      /app/scheduler.py
 COPY backend/adhan_player.py   /app/adhan_player.py
+COPY backend/audio/            /app/audio/
 COPY backend/db/               /app/db/
 COPY backend/providers/        /app/providers/
 COPY backend/cli/              /app/cli/

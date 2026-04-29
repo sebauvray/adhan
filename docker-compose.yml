@@ -15,6 +15,7 @@ services:
       - ./backend/app.py:/app/app.py
       - ./backend/scheduler.py:/app/scheduler.py
       - ./backend/adhan_player.py:/app/adhan_player.py
+      - ./backend/audio:/app/audio
       - ./backend/db:/app/db
       - ./backend/providers:/app/providers
       - ./backend/cli:/app/cli

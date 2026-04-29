@@ -1,15 +1,15 @@
-"""Play adhan or iqama alert on OwnTone outputs configured for a prayer.
+"""Apply prayer business rules (configured speakers, per-prayer volume, quiet
+hours) and delegate the actual playback to whichever AudioProvider is selected
+by the AUDIO_PROVIDER env var.
 
-Replaces the bash adhan.sh + load_config.py + get_homepods.py trio.
-Importable from the scheduler process (APScheduler), and runnable as a CLI for manual testing.
+Importable from the scheduler process (APScheduler) and runnable as a CLI for
+manual testing.
 """
 import logging
 import os
 import sys
-from datetime import datetime, time as dtime
+from datetime import datetime
 from typing import Optional
-
-import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -19,6 +19,7 @@ from db.config import (
     get_outputs_for_prayer,
     get_prayer_volume,
 )
+from audio import AudioProviderError, get_provider
 
 LEVELS = {"DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARN": logging.WARNING, "ERROR": logging.ERROR}
 
@@ -30,7 +31,9 @@ def _configure_logging():
     level = LEVELS.get(level_name, logging.INFO)
     if not logger.handlers:
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%d.%m.%Y - %H:%M:%S"))
+        handler.setFormatter(
+            logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%d.%m.%Y - %H:%M:%S")
+        )
         logger.addHandler(handler)
     logger.setLevel(level)
 
@@ -61,75 +64,19 @@ def _apply_quiet_hours(volume: int, now: Optional[datetime] = None) -> int:
     quiet_volume = int(get_value("config", "QUIET_VOLUME", "10"))
     when = now or datetime.now()
     if _is_quiet_hours(when, quiet_start, quiet_end) and volume > quiet_volume:
-        logger.info(f"Quiet hours active ({quiet_start}-{quiet_end}): volume capped from {volume} to {quiet_volume}")
+        logger.info(
+            f"Quiet hours active ({quiet_start}-{quiet_end}): volume capped from {volume} to {quiet_volume}"
+        )
         return quiet_volume
     return volume
 
 
-class OwnToneClient:
-    def __init__(self, host: str, port: str, timeout: int = 5):
-        self.base = f"http://{host}:{port}"
-        self.timeout = timeout
-
-    def list_outputs(self) -> list[dict]:
-        resp = requests.get(f"{self.base}/api/outputs", timeout=self.timeout)
-        resp.raise_for_status()
-        return resp.json().get("outputs", [])
-
-    def resolve_output_ids(self, names: list[str]) -> list[str]:
-        outputs = self.list_outputs()
-        by_name = {o["name"]: str(o["id"]) for o in outputs}
-        ids = []
-        for name in names:
-            oid = by_name.get(name)
-            if oid:
-                logger.debug(f"Output found: {name} -> {oid}")
-                ids.append(oid)
-            else:
-                logger.warning(f"Output not found: {name}")
-        return ids
-
-    def set_volume(self, output_ids: list[str], volume: int) -> None:
-        for oid in output_ids:
-            requests.put(
-                f"{self.base}/api/outputs/{oid}",
-                json={"volume": volume},
-                timeout=self.timeout,
-            )
-
-    def select_outputs(self, output_ids: list[str]) -> None:
-        requests.put(
-            f"{self.base}/api/outputs/set",
-            json={"outputs": output_ids},
-            timeout=self.timeout,
-        )
-
-    def resolve_track_uri(self, file_path: str) -> Optional[str]:
-        resp = requests.get(
-            f"{self.base}/api/search",
-            params={"type": "tracks", "expression": f'path is "{file_path}"'},
-            timeout=self.timeout,
-        )
-        resp.raise_for_status()
-        items = resp.json().get("tracks", {}).get("items", [])
-        if not items:
-            return None
-        return f"library:track:{items[0]['id']}"
-
-    def play(self, track_uri: str) -> None:
-        requests.post(
-            f"{self.base}/api/queue/items/add",
-            params={"uris": track_uri, "clear": "true", "playback": "start"},
-            timeout=self.timeout,
-        )
-
-
 def play(prayer_name: str, mode: str = "adhan") -> bool:
-    """Play the configured audio file for `prayer_name` on its configured OwnTone outputs.
+    """Resolve the speakers and volume for `prayer_name`, then play `mode`
+    ('adhan' | 'alert') through the configured AudioProvider.
 
-    `mode` can be 'adhan' (the call to prayer) or 'alert' (the iqama reminder).
-    Returns True on success, False if any precondition failed (no outputs configured,
-    OwnTone unreachable, track missing, etc.). Errors are logged.
+    Returns True on success, False if any precondition failed (no speakers
+    configured, provider unreachable, file missing, …). Errors are logged.
     """
     init_db()
     _configure_logging()
@@ -139,58 +86,26 @@ def play(prayer_name: str, mode: str = "adhan") -> bool:
     else:
         logger.info(f"Adhan triggered for: {prayer_name}")
 
-    homepods = get_outputs_for_prayer(prayer_name)
-    if not homepods:
-        logger.warning(f"No outputs configured for {prayer_name}")
+    speaker_names = get_outputs_for_prayer(prayer_name)
+    if not speaker_names:
+        logger.warning(f"No speakers configured for {prayer_name}")
         return False
-
-    logger.debug(f"Outputs for {prayer_name}: {homepods}")
+    logger.debug(f"Speakers for {prayer_name}: {speaker_names}")
 
     base_volume = get_prayer_volume(prayer_name, int(get_value("owntone", "ADHAN_VOLUME", "40")))
     volume = _apply_quiet_hours(base_volume)
     logger.debug(f"Volume for {prayer_name}: {volume}")
 
-    if mode == "alert":
-        file_path = get_value("owntone", "ALERT_FILE", "/srv/media/alert.mp3")
-    else:
-        file_path = get_value("owntone", "ADHAN_FILE", "/srv/media/adhan.mp3")
-    if not file_path:
-        logger.error("Audio file not set")
-        return False
-
-    host = get_value("owntone", "HOST", "host.docker.internal")
-    port = get_value("owntone", "PORT", "3689")
-    client = OwnToneClient(host, port)
-
     try:
-        output_ids = client.resolve_output_ids(homepods)
-    except requests.RequestException as e:
-        logger.error(f"OwnTone unreachable at {host}:{port}: {type(e).__name__}")
+        provider = get_provider()
+        provider.play_announcement(mode, speaker_names, volume)
+    except AudioProviderError as e:
+        logger.error(f"Playback failed: {type(e).__name__}: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error during playback: {type(e).__name__}: {e}")
         return False
 
-    if not output_ids:
-        logger.error(f"No valid OwnTone outputs found for {prayer_name}")
-        return False
-
-    try:
-        track_uri = client.resolve_track_uri(file_path)
-    except requests.RequestException as e:
-        logger.error(f"OwnTone search failed: {type(e).__name__}")
-        return False
-
-    if not track_uri:
-        logger.error(f"Track not found: {file_path}")
-        return False
-
-    try:
-        client.set_volume(output_ids, volume)
-        client.select_outputs(output_ids)
-        client.play(track_uri)
-    except requests.RequestException as e:
-        logger.error(f"Playback failed: {type(e).__name__}")
-        return False
-
-    logger.info(f"Playback started: {track_uri} on {output_ids}")
     return True
 
 

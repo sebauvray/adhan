@@ -20,6 +20,7 @@ from db.config import (
     SESSION_DURATION_DAYS,
     get_prayer_outputs, set_prayer_outputs,
     get_all_prayer_volumes, set_prayer_volume,
+    get_outputs_for_prayer, get_prayer_volume,
     get_prayer_times_for_date,
     get_users, create_user, update_user, delete_user,
     log_prayer, unlog_prayer, get_prayer_logs_for_date,
@@ -28,6 +29,12 @@ from db.config import (
     get_all_alert_config, set_alert_enabled, set_alert_delay,
 )
 from providers.mawaqit_http_provider import get_full_data
+from audio import (
+    AudioFileNotFound,
+    AudioProviderUnreachable,
+    SpeakerNotFound,
+    get_provider,
+)
 
 SESSION_COOKIE = "adhan_session"
 COOKIE_SECURE = os.environ.get('COOKIE_SECURE', 'false').lower() == 'true'
@@ -441,27 +448,20 @@ async def api_refresh(
 
 @app.get("/api/outputs")
 async def api_outputs():
-    """Fetch available AirPlay devices from OwnTone."""
-    host = get_value('owntone', 'HOST', 'host.docker.internal')
-    port = get_value('owntone', 'PORT', '3689')
+    """List the speakers available through the configured audio provider.
+    Kept under /api/outputs (instead of /api/speakers) for SPA backwards-compat."""
     try:
-        resp = http_requests.get(f"http://{host}:{port}/api/outputs", timeout=5)
-        resp.raise_for_status()
-        outputs = resp.json().get('outputs', [])
-        return {
-            "outputs": [
-                {
-                    "id": o['id'],
-                    "name": o['name'],
-                    "type": o['type'],
-                    "selected": o['selected'],
-                    "volume": o['volume'],
-                }
-                for o in outputs
-            ]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"OwnTone inaccessible : {type(e).__name__}")
+        speakers = get_provider().list_speakers()
+    except AudioProviderUnreachable as e:
+        raise HTTPException(status_code=502, detail=f"Provider audio injoignable : {e}")
+    # `selected` and `volume` were OwnTone-specific live state; the SPA
+    # only reads id/name, so we expose neutral defaults here.
+    return {
+        "outputs": [
+            {"id": s.id, "name": s.name, "type": s.type, "selected": False, "volume": 0}
+            for s in speakers
+        ]
+    }
 
 
 @app.post("/api/config")
@@ -534,53 +534,25 @@ async def api_test_prayer(
     authorization: Optional[str] = Header(None),
     adhan_session: Optional[str] = Cookie(None),
 ):
-    """Play adhan on configured outputs for a specific prayer."""
+    """Play the adhan immediately on the speakers configured for `prayer`.
+    Bypasses quiet hours: the user explicitly clicked play."""
     _require_admin(authorization, adhan_session)
-    from db.config import get_outputs_for_prayer, get_prayer_volume
-    host = get_value('owntone', 'HOST', 'host.docker.internal')
-    port = get_value('owntone', 'PORT', '3689')
-    adhan_file = get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3')
 
-    outputs = get_outputs_for_prayer(prayer)
-    if not outputs:
+    speaker_names = get_outputs_for_prayer(prayer)
+    if not speaker_names:
         raise HTTPException(status_code=400, detail=f"Aucune enceinte configurée pour {prayer}")
 
     volume = get_prayer_volume(prayer, 30)
-    base = f"http://{host}:{port}"
+    try:
+        get_provider().play_announcement("adhan", speaker_names, volume)
+    except SpeakerNotFound as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except AudioFileNotFound as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except AudioProviderUnreachable as e:
+        raise HTTPException(status_code=502, detail=f"Provider audio injoignable : {e}")
 
-    # Get all OwnTone outputs
-    resp = http_requests.get(f"{base}/api/outputs", timeout=5)
-    all_outputs = resp.json().get('outputs', [])
-
-    # Find IDs for configured names
-    ids = []
-    for o in all_outputs:
-        if o['name'] in outputs:
-            ids.append(str(o['id']))
-            # Set volume
-            http_requests.put(f"{base}/api/outputs/{o['id']}",
-                json={"volume": volume}, timeout=5)
-
-    if not ids:
-        raise HTTPException(status_code=400, detail="Enceintes introuvables dans OwnTone")
-
-    # Select outputs
-    http_requests.put(f"{base}/api/outputs/set",
-        json={"outputs": ids}, timeout=5)
-
-    # Search track
-    resp = http_requests.get(f"{base}/api/search",
-        params={"type": "tracks", "expression": f'path is "{adhan_file}"'}, timeout=5)
-    tracks = resp.json().get('tracks', {}).get('items', [])
-    if not tracks:
-        raise HTTPException(status_code=400, detail="Fichier audio introuvable dans OwnTone")
-
-    track_uri = f"library:track:{tracks[0]['id']}"
-
-    # Play
-    http_requests.post(f"{base}/api/queue/items/add?uris={track_uri}&clear=true&playback=start", timeout=5)
-
-    return {"success": True, "outputs": outputs, "volume": volume}
+    return {"success": True, "outputs": speaker_names, "volume": volume}
 
 
 @app.post("/api/stop-playback")
@@ -588,11 +560,12 @@ async def api_stop_playback(
     authorization: Optional[str] = Header(None),
     adhan_session: Optional[str] = Cookie(None),
 ):
-    """Stop OwnTone playback."""
+    """Stop any current playback through the configured audio provider."""
     _require_admin(authorization, adhan_session)
-    host = get_value('owntone', 'HOST', 'host.docker.internal')
-    port = get_value('owntone', 'PORT', '3689')
-    http_requests.put(f"http://{host}:{port}/api/player/stop", timeout=5)
+    try:
+        get_provider().stop()
+    except AudioProviderUnreachable as e:
+        raise HTTPException(status_code=502, detail=f"Provider audio injoignable : {e}")
     return {"success": True}
 
 
