@@ -33,6 +33,20 @@ services:
       start_period: 15s
     restart: always
 
+  front:
+    build:
+      context: ./web
+      target: dev
+    container_name: ${CONTAINER_NAME_FRONT:-adhan-front}
+    ports:
+      - "${FRONT_PORT:-5173}:5173"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    restart: always
+
   owntone:
     profiles: ["bundled"]
     container_name: ${CONTAINER_NAME_OWNTONE:-owntone}
