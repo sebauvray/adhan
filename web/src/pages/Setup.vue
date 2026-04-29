@@ -2,6 +2,7 @@
 import { ref, reactive, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
+import CardLayout from '@/layouts/CardLayout.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
 
 const router = useRouter()
@@ -122,12 +123,7 @@ async function finishSetup() {
 </script>
 
 <template>
-  <div class="page">
-    <div class="card">
-      <img src="/logo.png" alt="Adhan Home" class="logo">
-      <h1>Adhan Home</h1>
-      <p class="subtitle">Installation en quelques étapes</p>
-
+  <CardLayout title="Adhan Home" subtitle="Installation en quelques étapes">
       <div class="steps-indicator">
         <div v-for="i in 5" :key="i" class="dot" :class="{ active: step >= i - 1 }"></div>
       </div>
@@ -368,8 +364,7 @@ async function finishSetup() {
           <RouterLink to="/dashboard" class="btn btn-action">Accéder au dashboard</RouterLink>
         </div>
       </div>
-    </div>
-  </div>
+  </CardLayout>
 </template>
 
 <style scoped>
