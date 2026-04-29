@@ -12,6 +12,10 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Allow Music Assistant (running with network_mode: host) to fetch
+    // /api/audio/{kind} via host.docker.internal — Vite 5 blocks unknown
+    // Host headers by default.
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://api:8080',
