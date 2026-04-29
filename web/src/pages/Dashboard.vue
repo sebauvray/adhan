@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { api } from '@/api/client'
+import PrayerItem from '@/components/PrayerItem.vue'
 
 interface Prayer {
   name: string
@@ -406,26 +407,16 @@ onUnmounted(() => {
             </svg>
           </a>
           <div class="prayers-list">
-            <div
+            <PrayerItem
               v-for="p in prayers"
               :key="p.name"
-              :class="['prayer-item', p.status]"
-              :data-prayer="p.name"
+              :name="p.name"
+              :adhan="p.adhan"
+              :iqama="p.iqama"
+              :status="p.status"
+              :badge="badgeFor(p.name)"
               @click="openTracking(p.name)"
-            >
-              <span class="prayer-name">{{ p.name }}</span>
-              <span class="prayer-time">{{ p.adhan }}</span>
-              <span class="prayer-iqama">
-                <svg class="iqm-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                {{ p.iqama }}
-              </span>
-              <span v-if="badgeFor(p.name)" class="prayer-badge">{{ badgeFor(p.name) }}</span>
-            </div>
+            />
           </div>
           <a
             v-show="canViewNext"
