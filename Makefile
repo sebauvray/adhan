@@ -40,13 +40,13 @@ up:
 		COMPOSE_PROFILES=bundled docker compose up -d --build --remove-orphans; \
 	fi
 
-## Arrêter le projet
+## Arrêter le projet (englobe tous les profiles, dont `bundled` pour OwnTone)
 down:
-	docker compose down
+	docker compose --profile bundled down
 
 ## Supprimer totalement le projet (volumes, images, données)
 clean:
-	docker compose down -v --rmi all
+	docker compose --profile bundled down -v --rmi all
 
 ## Ouvrir le dashboard dans le navigateur par défaut
 open:
