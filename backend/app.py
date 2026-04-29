@@ -1,6 +1,6 @@
-import subprocess
-import sys
 import os
+import signal
+import sys
 from datetime import datetime, time as dtime, timedelta
 from typing import Optional
 
@@ -34,6 +34,22 @@ from providers.mawaqit_http_provider import get_full_data
 
 SESSION_COOKIE = "adhan_session"
 COOKIE_SECURE = os.environ.get('COOKIE_SECURE', 'false').lower() == 'true'
+SCHEDULER_PID_FILE = os.environ.get('SCHEDULER_PID_FILE', '/app/data/scheduler.pid')
+
+
+def _trigger_refresh() -> bool:
+    """Signal the scheduler process (sibling under supervisord) to refresh prayer times now.
+
+    Returns True if SIGUSR1 was delivered, False if the scheduler isn't ready yet
+    (e.g. PID file missing right after boot) or the process is gone.
+    """
+    try:
+        with open(SCHEDULER_PID_FILE) as f:
+            pid = int(f.read().strip())
+        os.kill(pid, signal.SIGUSR1)
+        return True
+    except (FileNotFoundError, ValueError, ProcessLookupError, PermissionError):
+        return False
 
 app = FastAPI(title="Adhan Home")
 
@@ -435,7 +451,7 @@ async def api_setup(data: SetupPayload, response: Response):
     session_id = create_session(auth_id)
     _set_session_cookie(response, session_id)
 
-    subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
+    _trigger_refresh()
 
     return {"success": True}
 
@@ -482,7 +498,7 @@ async def api_refresh(
 ):
     _require_admin(authorization, adhan_session)
 
-    subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
+    _trigger_refresh()
     return {"success": True}
 
 
@@ -536,7 +552,7 @@ async def api_config(
             set_value('config', 'CITY', data.get('city', ''))
         except Exception:
             pass
-        subprocess.Popen([sys.executable, '/app/get_time_salat.py'])
+        _trigger_refresh()
 
     return {"success": True}
 

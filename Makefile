@@ -1,15 +1,15 @@
 .PHONY: help up down clean open admin admin-list admin-create admin-reset admin-delete
 
-# Pick up CONTAINER_NAME_WEB (and any other override) from .env if present.
+# Pick up CONTAINER_NAME_API (and any other override) from .env if present.
 ifneq (,$(wildcard .env))
 include .env
 export
 endif
 
-CONTAINER_WEB := $(or $(CONTAINER_NAME_WEB),adhan-web)
+CONTAINER_API := $(or $(CONTAINER_NAME_API),adhan-api)
 WEB_PORT      := $(or $(WEB_PORT),8080)
 DB_PATH       := ./data/adhan.db
-ADMIN_CLI     := docker exec -it $(CONTAINER_WEB) python3 /app/cli/admin_reset.py
+ADMIN_CLI     := docker exec -it $(CONTAINER_API) python3 /app/cli/admin_reset.py
 
 ## Afficher l'aide
 help:
@@ -21,7 +21,7 @@ help:
 	@echo "  clean           Tout supprimer (volumes, images, base de données)"
 	@echo "  open            Ouvrir le dashboard dans le navigateur par défaut"
 	@echo ""
-	@echo "Compte admin (web container doit être up) :"
+	@echo "Compte admin (api container doit être up) :"
 	@echo "  admin           Menu interactif (list/create/reset/delete)"
 	@echo "  admin-list      Lister les comptes admin"
 	@echo "  admin-create    Créer un compte         (NAME=<username>)"

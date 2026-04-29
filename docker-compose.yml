@@ -1,10 +1,10 @@
 services:
 
-  web:
+  api:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: ${CONTAINER_NAME_WEB:-adhan-web}
+    container_name: ${CONTAINER_NAME_API:-adhan-api}
     ports:
       - "${WEB_PORT:-8080}:8080"
     extra_hosts:
@@ -12,50 +12,25 @@ services:
     volumes:
       - adhan-data:/app/data
       - owntone-media:/srv/media
-      - cron-data:/etc/cron.d
       - ./backend/app.py:/app/app.py
+      - ./backend/scheduler.py:/app/scheduler.py
+      - ./backend/adhan_player.py:/app/adhan_player.py
       - ./backend/db:/app/db
       - ./backend/providers:/app/providers
       - ./backend/cli:/app/cli
+      - ./backend/supervisord.conf:/app/supervisord.conf
       - ./frontend/static:/app/static
       - ./frontend/templates:/app/templates
     environment:
       - TZ=${TZ:-Europe/Paris}
       - DB_PATH=/app/data/adhan.db
       - COOKIE_SECURE=${COOKIE_SECURE:-false}
-    command: uvicorn app:app --host 0.0.0.0 --port 8080 --reload
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/api/status', timeout=3).status == 200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
-    restart: always
-
-  adhan:
-    build:
-      context: .
-      dockerfile: scheduler/Dockerfile
-      args:
-        - DEBIAN_VERSION=${DEBIAN_VERSION:-bookworm}
-        - GECKODRIVER_VERSION=${GECKODRIVER_VERSION:-v0.34.0}
-        - AUTONOMOUS=${AUTONOMOUS:-false}
-    container_name: ${CONTAINER_NAME_ADHAN:-adhan-home}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - adhan-data:/app/data
-      - cron-data:/etc/cron.d
-    environment:
-      - TZ=${TZ:-Europe/Paris}
-      - AUTONOMOUS=${AUTONOMOUS:-false}
-      - DB_PATH=/app/data/adhan.db
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep cron > /dev/null && test -s /etc/cron.d/salat"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
     restart: always
 
   owntone:
@@ -79,7 +54,6 @@ services:
 
 volumes:
   adhan-data:
-  cron-data:
   owntone-etc:
   owntone-media:
   owntone-cache:
