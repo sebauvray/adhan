@@ -17,9 +17,6 @@ COPY backend/db/               /app/db/
 COPY backend/providers/        /app/providers/
 COPY backend/cli/              /app/cli/
 
-COPY frontend/static/    /app/static/
-COPY frontend/templates/ /app/templates/
-
 COPY backend/supervisord.conf /app/supervisord.conf
 
 EXPOSE 8080

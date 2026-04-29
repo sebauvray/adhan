@@ -5,8 +5,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: ${CONTAINER_NAME_API:-adhan-api}
-    ports:
-      - "${WEB_PORT:-8080}:8080"
+    expose:
+      - "8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -19,8 +19,6 @@ services:
       - ./backend/providers:/app/providers
       - ./backend/cli:/app/cli
       - ./backend/supervisord.conf:/app/supervisord.conf
-      - ./frontend/static:/app/static
-      - ./frontend/templates:/app/templates
     environment:
       - TZ=${TZ:-Europe/Paris}
       - DB_PATH=/app/data/adhan.db
@@ -39,7 +37,7 @@ services:
       target: dev
     container_name: ${CONTAINER_NAME_FRONT:-adhan-front}
     ports:
-      - "${FRONT_PORT:-5173}:5173"
+      - "${WEB_PORT:-8080}:5173"
     volumes:
       - ./web:/app
       - /app/node_modules

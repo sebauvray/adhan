@@ -4,10 +4,7 @@ import sys
 from datetime import datetime, time as dtime, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, Request, Response, HTTPException, Header, Cookie, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, Response, HTTPException, Header, Cookie, UploadFile, File
 from pydantic import BaseModel
 import requests as http_requests
 
@@ -53,12 +50,6 @@ def _trigger_refresh() -> bool:
 
 app = FastAPI(title="Adhan Home")
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
-
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
 ARABIC = {
     'Fajr': 'الفجر',
     'Dhuhr': 'الظهر',
@@ -72,60 +63,6 @@ ARABIC = {
 @app.on_event("startup")
 async def startup():
     init_db()
-
-
-# --- Pages ---
-
-def _is_logged_in(adhan_session: Optional[str]) -> bool:
-    return bool(adhan_session and validate_session(adhan_session))
-
-
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    if not has_auth():
-        return RedirectResponse("/setup")
-    return RedirectResponse("/dashboard")
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    if not has_auth():
-        return RedirectResponse("/setup")
-    return templates.TemplateResponse(request, "dashboard.html")
-
-
-@app.get("/setup", response_class=HTMLResponse)
-async def setup_page(request: Request):
-    if has_auth():
-        return RedirectResponse("/dashboard")
-    return templates.TemplateResponse(request, "setup.html")
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, adhan_session: Optional[str] = Cookie(None)):
-    if not has_auth():
-        return RedirectResponse("/setup")
-    if _is_logged_in(adhan_session):
-        return RedirectResponse("/settings")
-    return templates.TemplateResponse(request, "login.html")
-
-
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request, adhan_session: Optional[str] = Cookie(None)):
-    if not has_auth():
-        return RedirectResponse("/setup")
-    if not _is_logged_in(adhan_session):
-        return RedirectResponse("/login?next=/settings")
-    return templates.TemplateResponse(request, "settings.html", {"title": "Paramètres", "subtitle": "Sauvegarde automatique"})
-
-
-@app.get("/stats", response_class=HTMLResponse)
-async def stats_page(request: Request, adhan_session: Optional[str] = Cookie(None)):
-    if not has_auth():
-        return RedirectResponse("/setup")
-    if not _is_logged_in(adhan_session):
-        return RedirectResponse("/login?next=/stats")
-    return templates.TemplateResponse(request, "stats.html", {"title": "Statistiques", "subtitle": "Suivi des prieres"})
 
 
 # --- API ---
