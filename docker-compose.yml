@@ -11,7 +11,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - adhan-data:/app/data
-      - owntone-media:/srv/media
+      - audio-media:/srv/media
       - ./backend/app.py:/app/app.py
       - ./backend/scheduler.py:/app/scheduler.py
       - ./backend/adhan_player.py:/app/adhan_player.py
@@ -24,6 +24,11 @@ services:
       - TZ=${TZ:-Europe/Paris}
       - DB_PATH=/app/data/adhan.db
       - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - AUDIO_PROVIDER=${AUDIO_PROVIDER:-music-assistant}
+      - MA_HOST=${MA_HOST:-host.docker.internal}
+      - MA_PORT=${MA_PORT:-8095}
+      - MA_TOKEN=${MA_TOKEN:-}
+      - AUDIO_BASE_URL=${AUDIO_BASE_URL:-http://host.docker.internal:8001}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/api/status', timeout=3).status == 200 else 1)"]
       interval: 30s
@@ -46,9 +51,25 @@ services:
       - api
     restart: always
 
+  music-assistant:
+    profiles: ["music-assistant"]
+    container_name: ${CONTAINER_NAME_MA:-adhan-music-assistant}
+    image: ghcr.io/music-assistant/server:latest
+    network_mode: host
+    cap_add:
+      - SYS_ADMIN
+      - DAC_READ_SEARCH
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - ma-data:/data
+    environment:
+      - LOG_LEVEL=${MA_LOG_LEVEL:-info}
+    restart: unless-stopped
+
   owntone:
-    profiles: ["bundled"]
-    container_name: ${CONTAINER_NAME_OWNTONE:-owntone}
+    profiles: ["owntone"]
+    container_name: ${CONTAINER_NAME_OWNTONE:-adhan-owntone}
     image: owntone/owntone:latest
     network_mode: host
     privileged: true
@@ -61,12 +82,13 @@ services:
     volumes:
       - ./owntone/entrypoint.sh:/entrypoint.sh:ro
       - owntone-etc:/etc/owntone
-      - owntone-media:/srv/media
+      - audio-media:/srv/media
       - owntone-cache:/var/cache/owntone
     restart: unless-stopped
 
 volumes:
   adhan-data:
+  audio-media:
+  ma-data:
   owntone-etc:
-  owntone-media:
   owntone-cache:

@@ -28,25 +28,19 @@ help:
 	@echo "  admin-reset     Réinitialiser un mdp    (NAME=<username>)"
 	@echo "  admin-delete    Supprimer un compte     (NAME=<username>)"
 
-## Démarrer le projet (active le profile bundled si OwnTone est en mode local)
+## Démarrer le projet (active le profile correspondant à AUDIO_PROVIDER)
 up:
-	@MODE=$$(sqlite3 $(DB_PATH) "SELECT value FROM config WHERE key='OWNTONE_MODE'" 2>/dev/null); \
-	MODE=$${MODE:-local}; \
-	if [ "$$MODE" = "external" ]; then \
-		echo "→ OwnTone : externe (service intégré non lancé)"; \
-		docker compose up -d --build --remove-orphans; \
-	else \
-		echo "→ OwnTone : intégré (profile bundled actif)"; \
-		COMPOSE_PROFILES=bundled docker compose up -d --build --remove-orphans; \
-	fi
+	@PROVIDER=$${AUDIO_PROVIDER:-music-assistant}; \
+	echo "→ Audio provider : $$PROVIDER"; \
+	COMPOSE_PROFILES=$$PROVIDER docker compose up -d --build --remove-orphans
 
-## Arrêter le projet (englobe tous les profiles, dont `bundled` pour OwnTone)
+## Arrêter le projet (englobe tous les profiles audio)
 down:
-	docker compose --profile bundled down
+	docker compose --profile music-assistant --profile owntone down
 
 ## Supprimer totalement le projet (volumes, images, données)
 clean:
-	docker compose --profile bundled down -v --rmi all
+	docker compose --profile music-assistant --profile owntone down -v --rmi all
 
 ## Ouvrir le dashboard dans le navigateur par défaut
 open:
