@@ -5,6 +5,7 @@ from datetime import datetime, time as dtime, timedelta
 from typing import Optional
 
 from fastapi import FastAPI, Response, HTTPException, Header, Cookie, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import requests as http_requests
 
@@ -571,6 +572,45 @@ async def api_stop_playback(
 
 MEDIA_DIR = '/srv/media'
 ALLOWED_AUDIO = {'.mp3', '.wav', '.ogg', '.m4a', '.flac'}
+
+
+@app.get("/api/audio/{kind}")
+async def api_audio(kind: str):
+    """Serve the configured adhan/alert audio file.
+    Used by Music Assistant: play_announcement passes this URL and MA
+    streams the file to the speaker. No auth — these files aren't sensitive
+    and MA fires the request without our session cookie."""
+    if kind not in {"adhan", "alert"}:
+        raise HTTPException(status_code=404, detail="Unknown audio kind")
+
+    key = "ADHAN_FILE" if kind == "adhan" else "ALERT_FILE"
+    default = f"{MEDIA_DIR}/{kind}.mp3"
+    file_path = get_value("owntone", key, default)
+
+    # Reject any path that escapes MEDIA_DIR — defense against ../ traversal
+    # in case a malicious config write slipped past validation upstream.
+    abs_path = os.path.realpath(file_path)
+    media_root = os.path.realpath(MEDIA_DIR) + os.sep
+    if not abs_path.startswith(media_root):
+        raise HTTPException(status_code=400, detail="Path outside media dir")
+
+    if not os.path.exists(abs_path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Audio file '{kind}' not uploaded yet. Upload one in Settings → Alertes sonores.",
+        )
+
+    media_type = "audio/mpeg"
+    ext = os.path.splitext(abs_path)[1].lower()
+    if ext == ".wav":
+        media_type = "audio/wav"
+    elif ext == ".ogg":
+        media_type = "audio/ogg"
+    elif ext == ".m4a":
+        media_type = "audio/mp4"
+    elif ext == ".flac":
+        media_type = "audio/flac"
+    return FileResponse(abs_path, media_type=media_type)
 
 
 @app.post("/api/upload-adhan")
