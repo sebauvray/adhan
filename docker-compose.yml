@@ -63,6 +63,11 @@ services:
       - apparmor:unconfined
     volumes:
       - ma-data:/data
+      # Same volume the api writes adhan/alert uploads to. MA scans /media
+      # via its built-in 'Filesystem Local' provider so the user can see
+      # and pick the file from the MA library too. Read-only because MA
+      # never writes here — uploads only flow through /api/upload-adhan.
+      - audio-media:/media:ro
     environment:
       - LOG_LEVEL=${MA_LOG_LEVEL:-info}
     restart: unless-stopped
