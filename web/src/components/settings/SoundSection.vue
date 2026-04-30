@@ -8,7 +8,6 @@ const adhanFile = ref('')
 const alertFile = ref('')
 const adhanStatus = ref('')
 const alertStatus = ref('')
-const owntonePort = ref('3689')
 
 const adhanInput = ref<HTMLInputElement | null>(null)
 const alertInput = ref<HTMLInputElement | null>(null)
@@ -17,19 +16,16 @@ const adhanCustom = computed(() => adhanFile.value && adhanFile.value !== '/srv/
 const alertCustom = computed(() => alertFile.value && alertFile.value !== '/srv/media/alert.mp3')
 const adhanFilename = computed(() => adhanFile.value.split('/').pop() || '')
 const alertFilename = computed(() => alertFile.value.split('/').pop() || '')
-const owntoneLink = computed(() => `http://${window.location.hostname}:${owntonePort.value}`)
 
 onMounted(async () => {
   const data = await api<{
     sound_enabled: string
     adhan_file: string
     alert_file: string
-    owntone_port: string
   }>('/config')
   enabled.value = data.sound_enabled === 'true'
   adhanFile.value = data.adhan_file || ''
   alertFile.value = data.alert_file || ''
-  owntonePort.value = data.owntone_port || '3689'
 })
 
 async function toggleEnabled() {
@@ -153,11 +149,6 @@ async function removeAlert() {
         <div v-if="alertStatus" style="font-size: 0.75rem; margin-top: 0.3rem">{{ alertStatus }}</div>
       </div>
 
-      <p style="margin-top: 0.5rem; font-size: 0.8rem">
-        <a :href="owntoneLink" target="_blank" class="link-action">
-          Gérer les enceintes dans OwnTone &rarr;
-        </a>
-      </p>
     </div>
   </div>
 </template>
