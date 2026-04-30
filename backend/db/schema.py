@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS owntone (
     value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS music_assistant (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
+
 CREATE TABLE IF NOT EXISTS homepods (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     name      TEXT    UNIQUE NOT NULL,
@@ -135,13 +140,18 @@ def _ensure_defaults(conn):
             'ADHAN_VOLUME': '40',
             'ALERT_FILE': '/srv/media/alert.mp3',
         },
+        'music_assistant': {
+            'HOST': 'host.docker.internal',
+            'PORT': '8095',
+        },
         'config': {
             'LOG_LEVEL': 'INFO',
             'QUIET_START': '21:00',
             'QUIET_END': '07:00',
             'QUIET_VOLUME': '10',
             'MULTI_DAY_DISPLAY': 'false',
-            'OWNTONE_MODE': 'local',
+            'AUDIO_PROVIDER': 'owntone',
+            'AUDIO_PROVIDER_MODE': 'bundled',
         },
     }
     for table, values in defaults.items():
@@ -200,6 +210,33 @@ def _migrate_hash_tokens(conn):
         pass
 
 
+def _migrate_audio_provider(conn):
+    """Migrate the legacy OWNTONE_MODE / 'local' values to the generic
+    AUDIO_PROVIDER + AUDIO_PROVIDER_MODE pair shared by all providers."""
+    try:
+        cur = conn.execute(
+            "SELECT key, value FROM config WHERE key IN ('OWNTONE_MODE', 'AUDIO_PROVIDER_MODE', 'AUDIO_PROVIDER')"
+        )
+        rows = dict(cur.fetchall())
+
+        if 'AUDIO_PROVIDER' not in rows:
+            conn.execute(
+                "INSERT OR IGNORE INTO config (key, value) VALUES ('AUDIO_PROVIDER', 'owntone')"
+            )
+
+        legacy = rows.get('OWNTONE_MODE')
+        if legacy is not None and 'AUDIO_PROVIDER_MODE' not in rows:
+            new_value = 'bundled' if legacy in ('local', 'bundled') else 'external'
+            conn.execute(
+                "INSERT OR IGNORE INTO config (key, value) VALUES ('AUDIO_PROVIDER_MODE', ?)",
+                (new_value,),
+            )
+            conn.execute("DELETE FROM config WHERE key = 'OWNTONE_MODE'")
+        conn.commit()
+    except Exception:
+        pass
+
+
 def _migrate_auth_user_id(conn):
     """Add user_id column to auth if missing (links admin to a tracking user)."""
     try:
@@ -223,4 +260,5 @@ def init_db():
     _migrate_token_scope(conn)
     _migrate_hash_tokens(conn)
     _migrate_auth_user_id(conn)
+    _migrate_audio_provider(conn)
     conn.close()

@@ -1,6 +1,6 @@
 """Music Assistant audio provider.
 
-Music Assistant exposes a REST API at http://<host>:8095/api where every
+Music Assistant exposes a REST API at http://<host>:<port>/api where every
 request is a POST with body {message_id, command, args}, authenticated by
 a Bearer token. We use:
 
@@ -10,23 +10,20 @@ a Bearer token. We use:
 
 `play_announcement` takes a `url` field — MA fetches that URL and streams
 it to the player. The URL points back to our own /api/audio/{kind}
-endpoint (added in step 3.3), so we don't have to manage MA's local-files
-provider or pre-index anything.
+endpoint, so we don't manage MA's local-files provider or pre-index anything.
 
-Configuration is read from env so no DB schema change is required to
-plug MA in. Settings UI persistence lands in step 3.5.
-
-  MA_HOST            host of the Music Assistant server (default localhost)
-  MA_PORT            port (default 8095)
-  MA_TOKEN           Bearer token (required — created in the MA WebUI)
-  AUDIO_BASE_URL     URL where MA can reach our /api (default
-                     http://host.docker.internal:8001 for Docker Desktop)
+Configuration lives in the SQLite `music_assistant` table (HOST, PORT, TOKEN),
+written by the Setup wizard and Settings page through the provider manifest.
+AUDIO_BASE_URL stays in env because it describes how MA reaches *us*, which
+is an infrastructure concern, not user config.
 """
 import logging
 import os
 import secrets
 
 import requests
+
+from db.config import get_value
 
 from .base import (
     AudioFileNotFound,
@@ -35,10 +32,68 @@ from .base import (
     Speaker,
     SpeakerNotFound,
 )
+from .manifest import ConfigField, ProviderManifest, SetupMode
 
 logger = logging.getLogger("audio.music_assistant")
 
 DEFAULT_TIMEOUT = 10
+
+
+MANIFEST = ProviderManifest(
+    id="music-assistant",
+    label="Music Assistant",
+    icon="🎶",
+    description="Découverte automatique AirPlay/Sonos/Cast. Plus moderne, plus de protocoles.",
+    setup_modes=(
+        SetupMode(
+            id="bundled",
+            label="Installation simple",
+            description="On installe Music Assistant pour toi (recommandé)",
+            icon="🚀",
+        ),
+        SetupMode(
+            id="external",
+            label="J'ai déjà Music Assistant",
+            description="Connexion à un serveur existant",
+            icon="⚙️",
+        ),
+    ),
+    fields=(
+        ConfigField(
+            key="host",
+            label="Adresse Music Assistant",
+            type="text",
+            default="host.docker.internal",
+            placeholder="host.docker.internal",
+            mode_visibility=("external",),
+            required=True,
+            storage_table="music_assistant",
+            storage_key="HOST",
+        ),
+        ConfigField(
+            key="port",
+            label="Port",
+            type="number",
+            default="8095",
+            placeholder="8095",
+            mode_visibility=("external",),
+            required=True,
+            storage_table="music_assistant",
+            storage_key="PORT",
+        ),
+        ConfigField(
+            key="token",
+            label="Token API",
+            type="password",
+            placeholder="eyJhbGc...",
+            help="À créer dans la WebUI de Music Assistant (Settings → Security → API tokens).",
+            required=True,
+            mode_visibility=("external",),
+            storage_table="music_assistant",
+            storage_key="TOKEN",
+        ),
+    ),
+)
 
 
 class MusicAssistantClient:
@@ -70,7 +125,6 @@ class MusicAssistantClient:
         data = resp.json()
         if isinstance(data, dict) and "error" in data:
             raise requests.RequestException(f"MA error: {data['error']}")
-        # Some commands return data directly (list of players), others wrap in {result}
         return data.get("result", data) if isinstance(data, dict) else data
 
 
@@ -91,22 +145,20 @@ def _normalize_type(provider: str) -> str:
 
 class MusicAssistantProvider(AudioProvider):
     name = "music-assistant"
+    manifest = MANIFEST
 
     def _client(self) -> MusicAssistantClient:
-        host = os.environ.get("MA_HOST", "localhost")
-        port = os.environ.get("MA_PORT", "8095")
-        token = os.environ.get("MA_TOKEN", "")
+        host = get_value("music_assistant", "HOST", "host.docker.internal")
+        port = get_value("music_assistant", "PORT", "8095")
+        token = get_value("music_assistant", "TOKEN", "")
         if not token:
             raise AudioProviderUnreachable(
-                "MA_TOKEN env var not set. Generate a token in the Music Assistant WebUI "
-                "and pass it via docker-compose."
+                "Token Music Assistant absent. Renseigne-le dans les paramètres."
             )
         return MusicAssistantClient(host, port, token)
 
     def _audio_url_for(self, kind: str) -> str:
-        """Build the URL MA will GET to fetch the announcement audio.
-        Default targets the api container as seen from MA's network (host mode):
-        http://host.docker.internal:8001/api/audio/{kind}."""
+        """Build the URL MA will GET to fetch the announcement audio."""
         base = os.environ.get("AUDIO_BASE_URL", "http://host.docker.internal:8001").rstrip("/")
         return f"{base}/api/audio/{kind}"
 
@@ -132,9 +184,6 @@ class MusicAssistantProvider(AudioProvider):
             raise ValueError(f"Unknown announcement kind: {kind}")
 
         url = self._audio_url_for(kind)
-
-        # Resolve human names → MA player_ids (the configured prayer outputs are
-        # stored by name so they survive provider restarts that re-issue ids).
         speakers = self.list_speakers()
         by_name = {s.name: s.id for s in speakers}
         player_ids = [by_name[n] for n in speaker_names if n in by_name]
@@ -143,15 +192,12 @@ class MusicAssistantProvider(AudioProvider):
 
         client = self._client()
         try:
-            # play_announcement is per-player in MA — fire one call each.
-            # MA itself takes care of saving/restoring whatever was playing.
             for pid in player_ids:
                 client.call(
                     "players/cmd/play_announcement",
                     {"player_id": pid, "url": url, "volume_level": volume},
                 )
         except requests.RequestException as e:
-            # Catch the typical "audio file unreachable" symptom early.
             msg = str(e).lower()
             if "404" in msg or "not found" in msg:
                 raise AudioFileNotFound(f"MA could not fetch {url}") from e
@@ -164,7 +210,6 @@ class MusicAssistantProvider(AudioProvider):
             speakers = self.list_speakers()
             client = self._client()
             for s in speakers:
-                # Best-effort: if one player fails, keep stopping the others.
                 try:
                     client.call("players/cmd/stop", {"player_id": s.id})
                 except requests.RequestException:
@@ -180,3 +225,50 @@ class MusicAssistantProvider(AudioProvider):
             return True
         except (requests.RequestException, AudioProviderUnreachable):
             return False
+
+
+def bootstrap_music_assistant(
+    username: str,
+    password: str,
+    host: str | None = None,
+    port: str | None = None,
+    device_name: str = "Adhan Home",
+) -> str:
+    """One-shot onboarding for a fresh Music Assistant instance.
+
+    Calls MA's `POST /setup` with the supplied admin credentials and returns
+    the long-lived token MA hands back. Idempotent only on first run — once
+    onboarding is done, MA's /setup endpoint refuses to recreate the admin.
+
+    The caller is responsible for persisting the returned token (e.g. into
+    the SQLite `music_assistant.TOKEN` row) and never having to ask the user.
+    """
+    base = f"http://{host or get_value('music_assistant', 'HOST', 'host.docker.internal')}:" \
+           f"{port or get_value('music_assistant', 'PORT', '8095')}"
+
+    # Confirm onboarding is still pending — otherwise we'd 4xx for nothing.
+    try:
+        info = requests.get(f"{base}/info", timeout=5).json()
+    except requests.RequestException as e:
+        raise AudioProviderUnreachable(f"MA injoignable : {e}") from e
+
+    if info.get("onboard_done"):
+        raise AudioProviderUnreachable(
+            "Music Assistant a déjà un admin configuré. Vide le volume ma-data pour repartir à zéro."
+        )
+
+    resp = requests.post(
+        f"{base}/setup",
+        json={"username": username, "password": password, "device_name": device_name},
+        timeout=15,
+    )
+    data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+    if not (resp.ok and data.get("success")):
+        raise AudioProviderUnreachable(
+            data.get("error") or f"MA /setup HTTP {resp.status_code}"
+        )
+
+    token = data.get("token") or ""
+    if not token:
+        raise AudioProviderUnreachable("MA /setup n'a pas renvoyé de token")
+    return token
