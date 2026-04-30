@@ -8,6 +8,8 @@ swapping providers is one env var (`AUDIO_PROVIDER`) — no business code change
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from .manifest import ProviderManifest
+
 
 @dataclass(frozen=True)
 class Speaker:
@@ -38,9 +40,12 @@ class AudioProvider(ABC):
     """Interface every audio provider must implement.
 
     Concrete providers: OwnToneProvider, MusicAssistantProvider, ...
+    Each one also declares a class-level `manifest` describing how the
+    UI should render its setup/config fields.
     """
 
     name: str = "unknown"
+    manifest: ProviderManifest
 
     @abstractmethod
     def list_speakers(self) -> list[Speaker]:
