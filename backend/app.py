@@ -34,7 +34,11 @@ from audio import (
     AudioFileNotFound,
     AudioProviderUnreachable,
     SpeakerNotFound,
+    active_mode,
+    active_provider_id,
+    get_manifest,
     get_provider,
+    list_manifests,
 )
 
 SESSION_COOKIE = "adhan_session"
@@ -335,24 +339,50 @@ async def api_get_config():
     }
 
 
+class AudioConfig(BaseModel):
+    """Provider-specific config payload, validated against the chosen provider's manifest."""
+    provider: str = "owntone"
+    mode: str = "bundled"
+    config: dict[str, str] = {}
+
+
+def _persist_audio_config(audio: AudioConfig) -> None:
+    """Save the chosen provider + mode + per-field values according to the
+    provider's manifest. Unknown fields are ignored — manifests are the contract."""
+    manifest = get_manifest(audio.provider)
+    if manifest is None:
+        raise HTTPException(status_code=400, detail=f"Provider audio inconnu : {audio.provider}")
+
+    mode = audio.mode if any(m.id == audio.mode for m in manifest.setup_modes) else "bundled"
+    set_value('config', 'AUDIO_PROVIDER', audio.provider)
+    set_value('config', 'AUDIO_PROVIDER_MODE', mode)
+
+    # Fields hidden in the current mode are reset to their defaults so the
+    # backend doesn't keep stale "external" values when the user switches
+    # back to "bundled" (e.g. an old custom host overriding host.docker.internal).
+    for field_def in manifest.fields:
+        if field_def.mode_visibility and mode not in field_def.mode_visibility:
+            value = field_def.default
+        else:
+            raw = audio.config.get(field_def.key, "")
+            value = (raw or "").strip() or field_def.default
+        set_value(field_def.storage_table, field_def.resolved_storage_key(), value)
+
+
 class SetupPayload(BaseModel):
     username: str
     password: str
     emoji: str = "🙂"
     mosque_url: str
     sound_enabled: str = "false"
-    owntone_mode: str = "local"            # "local" (bundled service) or "external"
-    owntone_host: str = "host.docker.internal"
-    owntone_port: str = "3689"
-    adhan_file: str = "/srv/media/adhan.mp3"
-    adhan_volume: str = "40"
     log_level: str = "INFO"
 
 
 @app.post("/api/setup")
 async def api_setup(data: SetupPayload, response: Response):
     """First-launch setup: creates the admin account, saves base config, opens a session.
-    Also creates a tracking user (same name, chosen emoji) and links it to the admin."""
+    Audio provider is handled separately via /api/audio/start-provider once
+    the user picks one in the wizard's audio step."""
     if has_auth():
         raise HTTPException(status_code=409, detail="Configuration déjà initialisée")
 
@@ -378,19 +408,6 @@ async def api_setup(data: SetupPayload, response: Response):
     set_value('config', 'MOSQUE_URL', data.mosque_url)
     set_value('config', 'SOUND_ENABLED', data.sound_enabled)
     set_value('config', 'LOG_LEVEL', data.log_level)
-
-    # OwnTone: in "local" mode we ignore user inputs and force the bundled defaults.
-    # In "external" mode we trust whatever host/port the user typed.
-    owntone_mode = data.owntone_mode if data.owntone_mode in ('local', 'external') else 'local'
-    set_value('config', 'OWNTONE_MODE', owntone_mode)
-    if owntone_mode == 'local':
-        set_value('owntone', 'HOST', 'host.docker.internal')
-        set_value('owntone', 'PORT', '3689')
-    else:
-        set_value('owntone', 'HOST', (data.owntone_host or '').strip() or 'host.docker.internal')
-        set_value('owntone', 'PORT', (data.owntone_port or '').strip() or '3689')
-    set_value('owntone', 'ADHAN_FILE', data.adhan_file)
-    set_value('owntone', 'ADHAN_VOLUME', data.adhan_volume)
 
     auth_id = verify_auth(username, password)
     session_id = create_session(auth_id)
@@ -445,6 +462,100 @@ async def api_refresh(
 
     _trigger_refresh()
     return {"success": True}
+
+
+@app.get("/api/audio/providers")
+async def api_audio_providers():
+    """All available audio providers with their declarative manifests.
+    The wizard and Settings render their UI from this — no hardcoded provider in the front."""
+    return {"providers": [m.to_dict() for m in list_manifests()]}
+
+
+@app.get("/api/audio/current")
+async def api_audio_current():
+    """Currently active provider id + mode + the values stored for each
+    of its manifest fields. Used by the Settings page to prefill the form."""
+    pid = active_provider_id()
+    manifest = get_manifest(pid)
+    config: dict[str, str] = {}
+    if manifest:
+        for f in manifest.fields:
+            config[f.key] = get_value(f.storage_table, f.resolved_storage_key(), f.default)
+    return {
+        "provider": pid,
+        "mode": active_mode(),
+        "config": config,
+    }
+
+
+@app.post("/api/audio/config")
+async def api_audio_config(
+    audio: AudioConfig,
+    authorization: Optional[str] = Header(None),
+    adhan_session: Optional[str] = Cookie(None),
+):
+    """Update the active provider + mode + its config in one shot.
+    Switching provider takes effect at runtime for `get_provider()` calls;
+    the docker profile only swaps after a `make up` restart."""
+    _require_admin(authorization, adhan_session)
+    _persist_audio_config(audio)
+    return {"success": True, "requires_restart": True}
+
+
+class StartProviderPayload(BaseModel):
+    """Wizard hands off provider choice + (for MA bundled) the admin creds
+    used to onboard MA on first launch. Plaintext password is only kept in
+    memory for the duration of this request — it never reaches the DB."""
+    provider: str
+    mode: str = "bundled"
+    config: dict[str, str] = {}
+    admin_username: str = ""
+    admin_password: str = ""
+
+
+@app.post("/api/audio/start-provider")
+async def api_audio_start_provider(payload: StartProviderPayload):
+    """Spin up the chosen audio provider's docker container and (for MA bundled
+    on a fresh instance) onboard it automatically with the Adhan Home admin creds.
+
+    Returns immediately with the initial status — the wizard polls
+    `/api/audio/start-status` to follow progress."""
+    from audio import runner  # lazy import to avoid loading docker shell utils when unused
+    from audio.music_assistant import bootstrap_music_assistant
+
+    manifest = get_manifest(payload.provider)
+    if manifest is None:
+        raise HTTPException(status_code=400, detail=f"Provider audio inconnu : {payload.provider}")
+
+    # Persist provider + mode + fields *before* starting the container so the
+    # provider code reads the right config the moment it boots.
+    _persist_audio_config(AudioConfig(
+        provider=payload.provider,
+        mode=payload.mode,
+        config=payload.config,
+    ))
+
+    if payload.mode == "external":
+        # Nothing to start — user runs the provider themselves.
+        return {"provider": payload.provider, "state": "ready", "message": "Provider externe — rien à démarrer"}
+
+    def _on_ready(provider: str) -> None:
+        if provider == "music-assistant" and payload.admin_username and payload.admin_password:
+            try:
+                token = bootstrap_music_assistant(payload.admin_username, payload.admin_password)
+                set_value("music_assistant", "TOKEN", token)
+            except AudioProviderUnreachable as e:
+                # Already onboarded? Skip silently — token must already be in DB or will be set later.
+                if "déjà un admin" not in str(e):
+                    raise
+
+    return runner.start_provider(payload.provider, on_ready=_on_ready)
+
+
+@app.get("/api/audio/start-status")
+async def api_audio_start_status():
+    from audio import runner
+    return runner.get_status()
 
 
 @app.get("/api/outputs")
