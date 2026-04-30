@@ -12,22 +12,30 @@ services:
     volumes:
       - adhan-data:/app/data
       - audio-media:/srv/media
-      - ./backend/app.py:/app/app.py
-      - ./backend/scheduler.py:/app/scheduler.py
-      - ./backend/adhan_player.py:/app/adhan_player.py
-      - ./backend/audio:/app/audio
-      - ./backend/db:/app/db
-      - ./backend/providers:/app/providers
-      - ./backend/cli:/app/cli
-      - ./backend/supervisord.conf:/app/supervisord.conf
+      - ${ADHAN_HOST_DIR:-.}/backend/app.py:/app/app.py
+      - ${ADHAN_HOST_DIR:-.}/backend/scheduler.py:/app/scheduler.py
+      - ${ADHAN_HOST_DIR:-.}/backend/adhan_player.py:/app/adhan_player.py
+      - ${ADHAN_HOST_DIR:-.}/backend/audio:/app/audio
+      - ${ADHAN_HOST_DIR:-.}/backend/db:/app/db
+      - ${ADHAN_HOST_DIR:-.}/backend/providers:/app/providers
+      - ${ADHAN_HOST_DIR:-.}/backend/cli:/app/cli
+      - ${ADHAN_HOST_DIR:-.}/backend/supervisord.conf:/app/supervisord.conf
+      # Docker control: socket + compose context, so the api can start
+      # the chosen audio provider container after the user confirms in the wizard.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${ADHAN_HOST_DIR:-.}/docker-compose.yml:/compose/docker-compose.yml:ro
+      - ${ADHAN_HOST_DIR:-.}/owntone:/compose/owntone:ro
+      - ${ADHAN_HOST_DIR:-.}/.env:/compose/.env:ro
     environment:
       - TZ=${TZ:-Europe/Paris}
       - DB_PATH=/app/data/adhan.db
       - COOKIE_SECURE=${COOKIE_SECURE:-false}
-      - AUDIO_PROVIDER=${AUDIO_PROVIDER:-music-assistant}
-      - MA_HOST=${MA_HOST:-host.docker.internal}
-      - MA_PORT=${MA_PORT:-8095}
-      - MA_TOKEN=${MA_TOKEN:-}
+      - COMPOSE_DIR=/compose
+      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-adhan}
+      # Host filesystem path of the project — needed when the api spawns
+      # provider containers via docker compose, because bind-mount sources
+      # are resolved against the *daemon's* (host) filesystem.
+      - ADHAN_HOST_DIR=${ADHAN_HOST_DIR:-/host-project-dir-not-set}
       - AUDIO_BASE_URL=${AUDIO_BASE_URL:-http://host.docker.internal:8001}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/api/status', timeout=3).status == 200 else 1)"]
@@ -45,7 +53,7 @@ services:
     ports:
       - "${WEB_PORT:-8080}:5173"
     volumes:
-      - ./web:/app
+      - ${ADHAN_HOST_DIR:-.}/web:/app
       - /app/node_modules
     depends_on:
       - api
@@ -85,7 +93,7 @@ services:
       - UID=${CURRENT_UID:-1000}
       - GID=${CURRENT_GID:-1000}
     volumes:
-      - ./owntone/entrypoint.sh:/entrypoint.sh:ro
+      - ${ADHAN_HOST_DIR:-.}/owntone/entrypoint.sh:/entrypoint.sh:ro
       - owntone-etc:/etc/owntone
       - audio-media:/srv/media
       - owntone-cache:/var/cache/owntone

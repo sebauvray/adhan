@@ -11,6 +11,11 @@ WEB_PORT      := $(or $(WEB_PORT),8080)
 DB_PATH       := ./data/adhan.db
 ADMIN_CLI     := docker exec -it $(CONTAINER_API) python3 /app/cli/admin_reset.py
 
+# Absolute host path of this checkout — propagated to docker-compose.yml so
+# bind-mount sources resolve to real host paths when the api container later
+# spawns provider containers itself.
+export ADHAN_HOST_DIR := $(CURDIR)
+
 ## Afficher l'aide
 help:
 	@echo "Usage: make <commande>"
@@ -28,11 +33,21 @@ help:
 	@echo "  admin-reset     Réinitialiser un mdp    (NAME=<username>)"
 	@echo "  admin-delete    Supprimer un compte     (NAME=<username>)"
 
-## Démarrer le projet (active le profile correspondant à AUDIO_PROVIDER)
+## Démarrer le projet
+## - Premier lancement (DB vide) : on démarre uniquement api + front. Le provider audio
+##   sera lancé à la demande par l'API quand l'user le choisira dans le wizard.
+## - Lancements suivants : si la DB contient déjà un AUDIO_PROVIDER en mode bundled,
+##   on relance aussi son container pour qu'il survive à un reboot machine.
 up:
-	@PROVIDER=$${AUDIO_PROVIDER:-music-assistant}; \
-	echo "→ Audio provider : $$PROVIDER"; \
-	COMPOSE_PROFILES=$$PROVIDER docker compose up -d --build --remove-orphans
+	@PROVIDER=$$(sqlite3 $(DB_PATH) "SELECT value FROM config WHERE key='AUDIO_PROVIDER'" 2>/dev/null); \
+	MODE=$$(sqlite3 $(DB_PATH) "SELECT value FROM config WHERE key='AUDIO_PROVIDER_MODE'" 2>/dev/null); \
+	if [ -n "$$PROVIDER" ] && [ "$$MODE" = "bundled" ]; then \
+		echo "→ Audio provider déjà choisi : $$PROVIDER (profile $$PROVIDER actif)"; \
+		COMPOSE_PROFILES=$$PROVIDER docker compose up -d --build --remove-orphans; \
+	else \
+		echo "→ Premier lancement : api + front uniquement (provider audio à choisir dans le wizard)"; \
+		docker compose up -d --build --remove-orphans api front; \
+	fi
 
 ## Arrêter le projet (englobe tous les profiles audio)
 down:
