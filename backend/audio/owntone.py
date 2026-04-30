@@ -18,8 +18,55 @@ from .base import (
     Speaker,
     SpeakerNotFound,
 )
+from .manifest import ConfigField, ProviderManifest, SetupMode
 
 logger = logging.getLogger("audio.owntone")
+
+
+MANIFEST = ProviderManifest(
+    id="owntone",
+    label="OwnTone",
+    icon="🎵",
+    description="Lecteur AirPlay open source. Idéal pour HomePods et Apple TV.",
+    setup_modes=(
+        SetupMode(
+            id="bundled",
+            label="Installation simple",
+            description="On installe OwnTone pour toi (recommandé)",
+            icon="🚀",
+        ),
+        SetupMode(
+            id="external",
+            label="J'ai déjà OwnTone",
+            description="Connexion à un serveur existant",
+            icon="⚙️",
+        ),
+    ),
+    fields=(
+        ConfigField(
+            key="host",
+            label="Adresse OwnTone",
+            type="text",
+            default="host.docker.internal",
+            placeholder="host.docker.internal",
+            mode_visibility=("external",),
+            required=True,
+            storage_table="owntone",
+            storage_key="HOST",
+        ),
+        ConfigField(
+            key="port",
+            label="Port",
+            type="number",
+            default="3689",
+            placeholder="3689",
+            mode_visibility=("external",),
+            required=True,
+            storage_table="owntone",
+            storage_key="PORT",
+        ),
+    ),
+)
 
 
 class OwnToneClient:
@@ -88,6 +135,7 @@ class OwnToneClient:
 
 class OwnToneProvider(AudioProvider):
     name = "owntone"
+    manifest = MANIFEST
 
     def _client(self) -> OwnToneClient:
         # Re-read config every call so a Settings change takes effect immediately.
