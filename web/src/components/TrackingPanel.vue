@@ -50,17 +50,19 @@ const isDirty = computed(() => {
   return false
 })
 
-const timerColor = computed<'green' | 'orange' | 'red' | 'idle'>(() => {
-  if (!isDirty.value) return 'idle'
-  // Tiers split for a 2s window: green > 1.4s, orange > 0.7s, red below.
-  if (timerRemaining.value > 1400) return 'green'
-  if (timerRemaining.value > 700) return 'orange'
-  return 'red'
+// Progress 0→1 across the 2s buffer. Drives the SVG ring around the panel:
+// stroke draws from 0 (nothing visible at tap) to full perimeter at commit.
+// Colour goes red → orange → green so a fully-green ring means "validation
+// imminent / success on its way".
+const progress = computed(() => {
+  if (!isDirty.value) return 0
+  return Math.max(0, Math.min(1, 1 - timerRemaining.value / BUFFER_MS))
 })
 
-const timerLabel = computed(() => {
-  if (!isDirty.value) return ''
-  return `${(timerRemaining.value / 1000).toFixed(1)}s`
+const strokeColor = computed(() => {
+  if (progress.value < 0.33) return '#e63946' // red — début, on vient de tap
+  if (progress.value < 0.66) return '#ff8800' // orange — milieu
+  return '#22b14c'                              // green — bientôt validé
 })
 
 function resetSelection() {
@@ -175,12 +177,25 @@ onUnmounted(() => stopTimer())
     @click="onBackdropClick"
   >
     <div class="tracking-panel">
+      <svg
+        v-show="isDirty"
+        class="tracking-progress-ring"
+        preserveAspectRatio="none"
+        viewBox="0 0 100 100"
+      >
+        <rect
+          x="1" y="1" width="98" height="98" rx="6" ry="6"
+          fill="none"
+          pathLength="100"
+          stroke-dasharray="100"
+          :stroke-dashoffset="100 - progress * 100"
+          :stroke="strokeColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+        />
+      </svg>
       <div v-if="!warningMode" class="tracking-header">
         <span class="tracking-prayer-name">{{ prayer || '' }}</span>
-        <span
-          v-if="isDirty"
-          :class="['tracking-timer', `is-${timerColor}`]"
-        >{{ timerLabel }}</span>
         <button class="tracking-close" @click="emit('close')">&times;</button>
       </div>
 
@@ -223,29 +238,24 @@ onUnmounted(() => stopTimer())
 </template>
 
 <style scoped>
-.tracking-timer {
+/* Progress ring around the panel — draws from 0 (just tapped) to full
+ * perimeter (about to commit). Colour goes red → orange → green so "fully
+ * green" reads as "success, validation incoming". */
+.tracking-progress-ring {
   position: absolute;
-  top: 0.7rem;
-  right: 2.6rem;
-  font-family: 'Russo One', sans-serif;
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1.5px solid currentColor;
-  background: rgba(255, 255, 255, 0.9);
-  transition: color 200ms, border-color 200ms;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
   pointer-events: none;
+  /* SVG viewBox is 100x100 with stroke-linecap="round"; perimeter starts
+   * top-left and we rotate so it grows from 12 o'clock clockwise — feels
+   * like a clock filling up. */
+  transform: rotate(-90deg);
+  transform-origin: center;
+  overflow: visible;
 }
-.tracking-timer.is-green  { color: #22b14c; }
-.tracking-timer.is-orange { color: #ff8800; }
-.tracking-timer.is-red    {
-  color: #e63946;
-  animation: timerPulse 600ms ease-in-out infinite alternate;
-}
-@keyframes timerPulse {
-  from { transform: scale(1); }
-  to   { transform: scale(1.08); }
+.tracking-progress-ring rect {
+  transition: stroke 250ms ease-out;
+  filter: drop-shadow(0 0 4px currentColor);
 }
 </style>
