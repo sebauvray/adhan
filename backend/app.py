@@ -876,15 +876,13 @@ async def api_log_prayer(payload: dict, authorization: Optional[str] = Header(No
 @app.post("/api/prayer-log/batch")
 async def api_log_prayer_batch(payload: dict, authorization: Optional[str] = Header(None)):
     """Apply the result of a tracking-panel session: log new users (`add`)
-    and/or unlog previously checked ones (`remove`) in one shot.
-
-    The frontend buffers taps for 3s after the first one (resetting on each
-    new tap), then computes the diff between the panel's initial state and
-    its final state, and posts the two lists here.
+    and/or unlog previously checked ones (`remove`) in one shot, then run
+    every tracker to produce the combo events the frontend overlay plays.
 
     `in_group` is set on the newly-added logs only — based on how many users
-    were added in this single batch. Existing logs are untouched, removes
-    don't influence in_group either."""
+    were added in this single batch. Existing logs are untouched."""
+    from trackers import evaluate_for_log
+
     prayer = payload.get('prayer')
     date = payload.get('date')
     add = payload.get('add') or []
@@ -897,15 +895,46 @@ async def api_log_prayer_batch(payload: dict, authorization: Optional[str] = Hea
         raise HTTPException(status_code=403, detail="Validation interdite pour cette prière")
 
     in_group = len(add) > 1
+    inserted: list[tuple[int, dict]] = []
     try:
-        for uid in add:
-            log_prayer(int(uid), prayer, date, in_group=in_group)
         for uid in remove:
             unlog_prayer(int(uid), prayer, date)
+        for uid in add:
+            uid_int = int(uid)
+            row = log_prayer(uid_int, prayer, date, in_group=in_group)
+            if row is not None:
+                inserted.append((uid_int, row))
     except (TypeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=f"user_id invalide : {e}")
 
-    return {"success": True, "in_group": in_group, "added": len(add), "removed": len(remove)}
+    # Build per-user batches in the order the user tapped (= order of `add`).
+    users = {u["id"]: u for u in get_users()}
+    batches = []
+    for uid_int, row in inserted:
+        events = evaluate_for_log(uid_int, row)
+        if not events:
+            continue
+        u = users.get(uid_int, {"id": uid_int, "name": "?", "emoji": "🙂"})
+        batches.append({
+            "user": {"id": u["id"], "name": u["name"], "emoji": u["emoji"]},
+            "events": [ev.__dict__ for ev in events],
+        })
+
+    return {
+        "success": True,
+        "in_group": in_group,
+        "added": len(add),
+        "removed": len(remove),
+        "batches": batches,
+    }
+
+
+@app.get("/api/trackers/{user_id}")
+async def api_get_trackers(user_id: int):
+    """Current `total / current_combo / best_combo` per tracker for one user —
+    used by the dashboard to render the persistent x{total} badges."""
+    from db.config import get_all_tracker_states
+    return {"user_id": user_id, "trackers": get_all_tracker_states(user_id)}
 
 
 @app.delete("/api/prayer-log")

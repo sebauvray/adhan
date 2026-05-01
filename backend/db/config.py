@@ -580,14 +580,111 @@ def _is_on_time(prayer, date_str):
 
 
 def log_prayer(user_id, prayer, date, in_group=False):
+    """Insert a prayer log and return the canonical row dict (or None if
+    the row already existed — UNIQUE conflict)."""
     on_time = 1 if _is_on_time(prayer, date) else 0
     conn = _connect()
-    conn.execute(
+    cur = conn.execute(
         "INSERT OR IGNORE INTO prayer_logs (user_id, prayer, date, on_time, in_group) VALUES (?, ?, ?, ?, ?)",
         (user_id, prayer, date, on_time, 1 if in_group else 0)
     )
+    inserted = cur.rowcount > 0
     conn.commit()
     conn.close()
+    if not inserted:
+        return None
+    return {
+        "user_id": user_id,
+        "prayer": prayer,
+        "date": date,
+        "on_time": bool(on_time),
+        "in_group": bool(in_group),
+    }
+
+
+# --- Tracker state ---
+
+def fetch_user_history(user_id):
+    """Full prayer history for a user, ordered chronologically — used by
+    every tracker for combo/streak math."""
+    PRAYER_ORDER_SQL = (
+        "CASE prayer "
+        "WHEN 'Fajr' THEN 0 "
+        "WHEN 'Dhuhr' THEN 1 "
+        "WHEN 'Asr' THEN 2 "
+        "WHEN 'Maghrib' THEN 3 "
+        "WHEN 'Isha' THEN 4 "
+        "ELSE 5 END"
+    )
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            f"SELECT user_id, prayer, date, on_time, in_group FROM prayer_logs "
+            f"WHERE user_id = ? ORDER BY date, {PRAYER_ORDER_SQL}",
+            (user_id,)
+        )
+        rows = [
+            {"user_id": r[0], "prayer": r[1], "date": r[2],
+             "on_time": bool(r[3]), "in_group": bool(r[4])}
+            for r in cur.fetchall()
+        ]
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+
+def get_tracker_state(user_id, tracker_id):
+    """Return {total, current_combo, best_combo} for a user/tracker
+    pair — zeros if no row yet."""
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT total, current_combo, best_combo FROM tracker_state "
+            "WHERE user_id = ? AND tracker_id = ?",
+            (user_id, tracker_id)
+        )
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return {"total": 0, "current_combo": 0, "best_combo": 0}
+        return {"total": row[0], "current_combo": row[1], "best_combo": row[2]}
+    except Exception:
+        return {"total": 0, "current_combo": 0, "best_combo": 0}
+
+
+def update_tracker_state(user_id, tracker_id, *, total, current_combo, best_combo):
+    """Upsert the tracker_state row. Caller computes the new values."""
+    try:
+        conn = _connect()
+        conn.execute(
+            "INSERT INTO tracker_state (user_id, tracker_id, total, current_combo, best_combo) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id, tracker_id) DO UPDATE SET "
+            "total=excluded.total, current_combo=excluded.current_combo, best_combo=excluded.best_combo",
+            (user_id, tracker_id, total, current_combo, best_combo)
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def get_all_tracker_states(user_id):
+    """All tracker rows for a user — used by the dashboard to render
+    the current `x{total}` badges."""
+    try:
+        conn = _connect()
+        cur = conn.execute(
+            "SELECT tracker_id, total, current_combo, best_combo FROM tracker_state "
+            "WHERE user_id = ?",
+            (user_id,)
+        )
+        rows = {r[0]: {"total": r[1], "current_combo": r[2], "best_combo": r[3]} for r in cur.fetchall()}
+        conn.close()
+        return rows
+    except Exception:
+        return {}
 
 
 def unlog_prayer(user_id, prayer, date):

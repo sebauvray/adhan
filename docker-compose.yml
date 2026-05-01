@@ -19,6 +19,7 @@ services:
       - ${ADHAN_HOST_DIR:-.}/backend/db:/app/db
       - ${ADHAN_HOST_DIR:-.}/backend/providers:/app/providers
       - ${ADHAN_HOST_DIR:-.}/backend/cli:/app/cli
+      - ${ADHAN_HOST_DIR:-.}/backend/trackers:/app/trackers
       - ${ADHAN_HOST_DIR:-.}/backend/supervisord.conf:/app/supervisord.conf
       # Docker control: socket + compose context, so the api can start
       # the chosen audio provider container after the user confirms in the wizard.
