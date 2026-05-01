@@ -151,7 +151,14 @@ async function commit() {
 }
 
 function onBackdropClick() {
-  emit('close')
+  // Click outside = "I'm done" → commit if there's anything pending,
+  // otherwise just close silently.
+  if (isDirty.value) {
+    stopTimer()
+    commit()
+  } else {
+    emit('close')
+  }
 }
 
 onUnmounted(() => stopTimer())

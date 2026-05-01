@@ -193,6 +193,11 @@ def refresh_jobs():
 
     try:
         if isha_past:
+            # Today is over (Isha already played) — keep today's data so
+            # the dashboard can still show the day, and fetch tomorrow so
+            # the next-prayer countdown rolls onto Fajr automatically.
+            if not today_data:
+                _fetch_and_store(today, mosque_url)
             target = tomorrow
             prayers = _fetch_and_store(tomorrow, mosque_url)
         else:
@@ -204,8 +209,40 @@ def refresh_jobs():
 
     _clear_dynamic_jobs()
     _schedule_prayers_for_date(target, prayers)
+    _schedule_post_isha_rollover(today, today_data)
     cleanup_old_prayer_times()
     logger.info(f"Refresh complete: {len(scheduler.get_jobs())} jobs scheduled")
+
+
+POST_ISHA_JOB_ID = "post_isha_rollover"
+
+
+def _schedule_post_isha_rollover(today: date, today_data: list[dict]):
+    """Schedule a one-shot job at Isha+10min that triggers a refresh.
+
+    Without this, after Isha passes the dashboard's countdown stays stuck on
+    a `next: null` until the 04:00 daily refresh — the user sees no upcoming
+    prayer for ~5 hours."""
+    if not today_data:
+        return
+    isha = next((p for p in today_data if p["name"] == "Isha"), None)
+    if not isha:
+        return
+    try:
+        ih, im = map(int, isha["adhan"].split(":"))
+    except (ValueError, AttributeError):
+        return
+    rollover = datetime.combine(today, datetime.min.time()).replace(hour=ih, minute=im) + timedelta(minutes=10)
+    if rollover <= datetime.now():
+        return
+    scheduler.add_job(
+        refresh_jobs,
+        trigger=DateTrigger(run_date=rollover),
+        id=POST_ISHA_JOB_ID,
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+    logger.debug(f"Scheduled post-Isha rollover at {rollover.isoformat()}")
 
 
 def _handle_sigusr1(signum, frame):
