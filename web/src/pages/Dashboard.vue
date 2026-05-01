@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { api } from '@/api/client'
 import PrayerItem from '@/components/PrayerItem.vue'
+import TrackingPanel from '@/components/TrackingPanel.vue'
 
 interface Prayer {
   name: string
@@ -244,35 +245,14 @@ function closeTracking() {
 
 const confettiCanvas = useTemplateRef<HTMLCanvasElement>('confetti-canvas')
 
-async function toggleUserPrayer(userId: number) {
-  const prayer = activePrayer.value
-  if (!prayer) return
-  const date = viewDate.value
-  const ids = loggedIdsFor(prayer)
-  const isDone = ids.includes(userId)
-
+function onBatchCommitted(payload: { prayer: string; date: string; add: number[]; remove: number[] }) {
+  const { prayer, date, add, remove } = payload
   if (!logsByDate[date]) logsByDate[date] = {}
-  if (!logsByDate[date][prayer]) logsByDate[date][prayer] = []
-
-  try {
-    if (isDone) {
-      await api('/prayer-log', {
-        method: 'DELETE',
-        body: JSON.stringify({ user_id: userId, prayer, date }),
-      })
-      logsByDate[date][prayer] = logsByDate[date][prayer].filter((id) => id !== userId)
-    } else {
-      await api('/prayer-log', {
-        method: 'POST',
-        body: JSON.stringify({ user_id: userId, prayer, date }),
-      })
-      logsByDate[date][prayer].push(userId)
-      launchConfetti()
-    }
-    setTimeout(() => closeTracking(), 800)
-  } catch (e) {
-    console.error('Erreur toggle prayer:', e)
-  }
+  const current = new Set(logsByDate[date][prayer] || [])
+  add.forEach((id) => current.add(id))
+  remove.forEach((id) => current.delete(id))
+  logsByDate[date][prayer] = [...current]
+  if (add.length > 0) launchConfetti()
 }
 
 // --- Confetti ---
@@ -485,54 +465,17 @@ onUnmounted(() => {
     </div>
   </div>
 
-  <!-- Tracking overlay -->
-  <div
-    v-show="trackingOpen"
-    :class="['tracking-overlay', { open: trackingOpen }]"
-    style="display: flex"
-    @click.self="closeTracking"
-  >
-    <div class="tracking-panel">
-      <div v-if="!trackingWarning" class="tracking-header">
-        <span class="tracking-prayer-name">{{ activePrayer || '' }}</span>
-        <button class="tracking-close" @click="closeTracking">&times;</button>
-      </div>
-      <template v-if="trackingWarning">
-        <div class="tracking-warning">
-          <span style="font-size: 2.5rem">☝️</span>
-          <p>Dieu te voit tu sais...</p>
-        </div>
-      </template>
-      <template v-else>
-        <div class="tracking-subtitle">Qui a prié ?</div>
-        <div class="tracking-users">
-          <p
-            v-if="!trackingUsers.length"
-            style="font-size: 0.85rem; color: rgba(26, 26, 26, 0.5); margin: 1rem 0"
-          >
-            Ajoute des utilisateurs dans les
-            <RouterLink to="/settings" style="color: #c8a97e">Paramètres</RouterLink>
-          </p>
-          <template v-else>
-            <button
-              v-for="(u, i) in trackingUsers"
-              :key="u.id"
-              :class="['tracking-avatar', { done: loggedIdsFor(activePrayer || '').includes(u.id) }]"
-              :style="{ animationDelay: `${i * 0.07}s` }"
-              @click="toggleUserPrayer(u.id)"
-            >
-              <span class="tracking-avatar-emoji">{{ u.emoji }}</span>
-              <span class="tracking-avatar-name">{{ u.name }}</span>
-              <span v-if="loggedIdsFor(activePrayer || '').includes(u.id)" class="tracking-avatar-check">&#10003;</span>
-            </button>
-            <p v-if="activePrayer && isPrayerLate(activePrayer)" class="tracking-reminder">
-              Chaque prière a son heure, ne tarde pas la prochaine fois inch'Allah !
-            </p>
-          </template>
-        </div>
-      </template>
-    </div>
-  </div>
+  <TrackingPanel
+    :open="trackingOpen"
+    :prayer="activePrayer"
+    :users="trackingUsers"
+    :initial-logged-ids="loggedIdsFor(activePrayer || '')"
+    :view-date="viewDate"
+    :warning-mode="trackingWarning"
+    :late-reminder="!!activePrayer && isPrayerLate(activePrayer)"
+    @close="closeTracking"
+    @committed="onBatchCommitted"
+  />
 
   <canvas
     ref="confetti-canvas"
