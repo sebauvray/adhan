@@ -24,10 +24,10 @@
       "broken": ""
     },
     "fire": {
-      "name": "On fire",
-      "label": "ON FIRE!",
-      "combo": "COMBO x{n} ON FIRE!",
-      "broken": "FIRE OUT!"
+      "name": "Full day",
+      "label": "FULL DAY!",
+      "combo": "COMBO x{n} FULL DAY!",
+      "broken": "DAY INCOMPLETE!"
     },
     "perfect_day": {
       "name": "Perfect day",
