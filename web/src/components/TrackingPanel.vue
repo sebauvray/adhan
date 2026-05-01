@@ -63,6 +63,10 @@ function resetSelection() {
   selected.value = new Set(props.initialLoggedIds)
 }
 
+// Reset only when the panel actually transitions from closed → open or when
+// the active prayer changes. We deliberately don't watch `initialLoggedIds`:
+// the parent rebuilds it on every render, so watching it would wipe the
+// in-progress selection on every reactivity tick.
 watch(() => props.open, (open) => {
   if (open) {
     resetSelection()
@@ -72,8 +76,11 @@ watch(() => props.open, (open) => {
   }
 })
 
-watch(() => props.initialLoggedIds, () => {
-  if (props.open) resetSelection()
+watch(() => props.prayer, () => {
+  if (props.open) {
+    resetSelection()
+    stopTimer()
+  }
 })
 
 function toggle(userId: number) {
