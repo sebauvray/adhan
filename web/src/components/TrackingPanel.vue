@@ -15,6 +15,9 @@
  */
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { api } from '@/api/client'
+import { useComboQueue, type ComboBatch } from '@/stores/comboQueue'
+
+const comboQueue = useComboQueue()
 
 interface User { id: number; name: string; emoji: string }
 
@@ -130,7 +133,7 @@ async function commit() {
     return
   }
   try {
-    const res = await api<{ in_group: boolean; added: number; removed: number }>(
+    const res = await api<{ in_group: boolean; added: number; removed: number; batches: ComboBatch[] }>(
       '/prayer-log/batch',
       {
         method: 'POST',
@@ -138,6 +141,7 @@ async function commit() {
       },
     )
     emit('committed', { prayer: props.prayer, date: props.viewDate, add, remove, in_group: res.in_group })
+    if (res.batches?.length) comboQueue.push(res.batches)
   } catch (e) {
     console.error('Erreur commit batch:', e)
   } finally {
