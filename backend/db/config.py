@@ -549,11 +549,42 @@ def delete_user(user_id):
 
 # --- Prayer Logs ---
 
-def log_prayer(user_id, prayer, date):
+def _is_on_time(prayer, date_str):
+    """A log is 'on time' iff it's logged for today within the prayer's adhan
+    window — `[adhan, next prayer's adhan)`. Backlog logs (date != today) are
+    always off-time: we can't know whether the user actually prayed within
+    the window, so they don't count toward on-time or perfect_day trackers."""
+    today = datetime.now().strftime('%Y-%m-%d')
+    if date_str != today:
+        return False
+    times = get_prayer_times_for_date(date_str)
+    if not times:
+        return False
+    now = datetime.now()
+    target_idx = next((i for i, p in enumerate(times) if p['name'] == prayer), -1)
+    if target_idx < 0:
+        return False
+    try:
+        adhan_dt = datetime.strptime(f"{date_str} {times[target_idx]['adhan']}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        return False
+    if now < adhan_dt:
+        return False
+    if target_idx + 1 < len(times):
+        try:
+            next_dt = datetime.strptime(f"{date_str} {times[target_idx + 1]['adhan']}", "%Y-%m-%d %H:%M")
+            return now < next_dt
+        except ValueError:
+            return True
+    return True
+
+
+def log_prayer(user_id, prayer, date, in_group=False):
+    on_time = 1 if _is_on_time(prayer, date) else 0
     conn = _connect()
     conn.execute(
-        "INSERT OR IGNORE INTO prayer_logs (user_id, prayer, date) VALUES (?, ?, ?)",
-        (user_id, prayer, date)
+        "INSERT OR IGNORE INTO prayer_logs (user_id, prayer, date, on_time, in_group) VALUES (?, ?, ?, ?, ?)",
+        (user_id, prayer, date, on_time, 1 if in_group else 0)
     )
     conn.commit()
     conn.close()
