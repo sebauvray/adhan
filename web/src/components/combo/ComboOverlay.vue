@@ -207,22 +207,24 @@ const flashStrong = computed(() => {
 /* ---- Combo label (the star) ---- */
 .combo-label {
   position: absolute;
-  top: 42%;
+  top: 44%;
   left: 50%;
   font-family: 'Bowlby One SC', 'Russo One', sans-serif;
-  font-size: clamp(2.5rem, 8vw, 6rem);
+  font-size: clamp(1.6rem, 4.5vw, 3.2rem);
   font-style: italic;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   white-space: nowrap;
-  -webkit-text-stroke: 4px #000;
+  max-width: 90vw;
+  text-align: center;
+  -webkit-text-stroke: 3px #000;
   paint-order: stroke fill;
   text-shadow:
-    0 0 22px currentColor,
-    0 6px 0 rgba(0,0,0,0.6),
-    0 12px 30px rgba(0,0,0,0.85);
+    0 0 18px currentColor,
+    0 4px 0 rgba(0,0,0,0.55),
+    0 8px 22px rgba(0,0,0,0.8);
 }
-.combo-label.huge { font-size: clamp(3.5rem, 12vw, 9rem); }
+.combo-label.huge { font-size: clamp(2rem, 6vw, 4.5rem); }
 
 /* Variant gradient fills */
 .combo-label.variant-salat {
@@ -261,27 +263,27 @@ const flashStrong = computed(() => {
 .combo-label-leave-active { animation: labelLeave 200ms ease-in; }
 
 @keyframes labelFromRight {
-  0%   { transform: translate(calc(-50% + 600px), 0) scale(0.4) rotate(-12deg); opacity: 0; filter: blur(14px); }
-  30%  { transform: translate(calc(-50% - 30px), 0) scale(1.45) rotate(-12deg); opacity: 1; filter: blur(0); }
-  38%  { transform: translate(calc(-50% - 30px), 0) scale(1.45) rotate(-12deg); }
-  50%  { transform: translate(-50%, 0) scale(0.92) rotate(-12deg); }
-  60%  { transform: translate(-50%, 0) scale(1.05) rotate(-12deg); }
-  72%  { transform: translate(-50%, 0) scale(1) rotate(-12deg); opacity: 1; }
-  100% { transform: translate(-50%, -40px) scale(0.9) rotate(-12deg); opacity: 0; }
+  0%   { transform: translate(calc(-50% + 400px), 0) scale(0.4) rotate(-8deg); opacity: 0; filter: blur(14px); }
+  30%  { transform: translate(calc(-50% - 30px), 0) scale(1.2) rotate(-8deg); opacity: 1; filter: blur(0); }
+  38%  { transform: translate(calc(-50% - 30px), 0) scale(1.2) rotate(-8deg); }
+  50%  { transform: translate(-50%, 0) scale(0.92) rotate(-8deg); }
+  60%  { transform: translate(-50%, 0) scale(1.05) rotate(-8deg); }
+  72%  { transform: translate(-50%, 0) scale(1) rotate(-8deg); opacity: 1; }
+  100% { transform: translate(-50%, -40px) scale(0.9) rotate(-8deg); opacity: 0; }
 }
 @keyframes labelFromLeft {
-  0%   { transform: translate(calc(-50% - 600px), 0) scale(0.4) rotate(8deg); opacity: 0; filter: blur(14px); }
-  30%  { transform: translate(calc(-50% + 30px), 0) scale(1.45) rotate(8deg); opacity: 1; filter: blur(0); }
-  38%  { transform: translate(calc(-50% + 30px), 0) scale(1.45) rotate(8deg); }
-  50%  { transform: translate(-50%, 0) scale(0.92) rotate(8deg); }
-  60%  { transform: translate(-50%, 0) scale(1.05) rotate(8deg); }
-  72%  { transform: translate(-50%, 0) scale(1) rotate(8deg); opacity: 1; }
-  100% { transform: translate(-50%, -40px) scale(0.9) rotate(8deg); opacity: 0; }
+  0%   { transform: translate(calc(-50% - 400px), 0) scale(0.4) rotate(6deg); opacity: 0; filter: blur(14px); }
+  30%  { transform: translate(calc(-50% + 30px), 0) scale(1.2) rotate(6deg); opacity: 1; filter: blur(0); }
+  38%  { transform: translate(calc(-50% + 30px), 0) scale(1.2) rotate(6deg); }
+  50%  { transform: translate(-50%, 0) scale(0.92) rotate(6deg); }
+  60%  { transform: translate(-50%, 0) scale(1.05) rotate(6deg); }
+  72%  { transform: translate(-50%, 0) scale(1) rotate(6deg); opacity: 1; }
+  100% { transform: translate(-50%, -40px) scale(0.9) rotate(6deg); opacity: 0; }
 }
 @keyframes labelFromTop {
   0%   { transform: translate(-50%, -400px) scale(0.3) rotate(-5deg); opacity: 0; filter: blur(14px); }
-  26%  { transform: translate(-50%, 30px) scale(1.6) rotate(-5deg); opacity: 1; filter: blur(0); }
-  34%  { transform: translate(-50%, 30px) scale(1.6) rotate(-5deg); }
+  26%  { transform: translate(-50%, 30px) scale(1.3) rotate(-5deg); opacity: 1; filter: blur(0); }
+  34%  { transform: translate(-50%, 30px) scale(1.3) rotate(-5deg); }
   46%  { transform: translate(-50%, 0) scale(0.9) rotate(-5deg); }
   58%  { transform: translate(-50%, 0) scale(1.08) rotate(-5deg); }
   72%  { transform: translate(-50%, 0) scale(1) rotate(-5deg); opacity: 1; }
