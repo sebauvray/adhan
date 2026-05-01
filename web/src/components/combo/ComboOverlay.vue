@@ -166,6 +166,8 @@ const flashStrong = computed(() => {
   pointer-events: none;
   z-index: 9999;
   overflow: hidden;
+  /* Hard clip — labels can never spill outside the viewport, even mid-overshoot. */
+  contain: strict;
 }
 
 /* ---- User header ---- */
@@ -198,7 +200,7 @@ const flashStrong = computed(() => {
 .combo-header-leave-active { animation: headerOut 250ms ease-in; }
 @keyframes headerIn {
   from { transform: translateX(-50%) scale(0.4); opacity: 0; }
-  60%  { transform: translateX(-50%) scale(1.2); }
+  60%  { transform: translateX(-50%) scale(1.12); }
   to   { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 @keyframes headerOut {
@@ -211,13 +213,18 @@ const flashStrong = computed(() => {
   top: 44%;
   left: 50%;
   font-family: 'Bowlby One SC', 'Russo One', sans-serif;
-  font-size: clamp(1.6rem, 4.5vw, 3.2rem);
+  font-size: clamp(1.3rem, 3.6vw, 2.6rem);
   font-style: italic;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  white-space: nowrap;
-  max-width: 90vw;
   text-align: center;
+  /* Wrap onto 2 lines instead of bleeding off the side on narrow screens. */
+  white-space: normal;
+  word-break: keep-all;
+  line-height: 1.05;
+  /* Stay safely inside the viewport even at peak overshoot scale. */
+  max-width: min(80vw, 38ch);
+  padding: 0 8px;
   -webkit-text-stroke: 3px #000;
   paint-order: stroke fill;
   text-shadow:
@@ -225,7 +232,10 @@ const flashStrong = computed(() => {
     0 4px 0 rgba(0,0,0,0.55),
     0 8px 22px rgba(0,0,0,0.8);
 }
-.combo-label.huge { font-size: clamp(2rem, 6vw, 4.5rem); }
+.combo-label.huge {
+  font-size: clamp(1.6rem, 4.8vw, 3.6rem);
+  max-width: min(85vw, 42ch);
+}
 
 /* Variant gradient fills */
 .combo-label.variant-salat {
@@ -268,27 +278,27 @@ const flashStrong = computed(() => {
 .combo-label-leave-active { animation: labelLeave 200ms ease-in; }
 
 @keyframes labelFromRight {
-  0%   { transform: translate(calc(-50% + 400px), 0) scale(0.4) rotate(-8deg); opacity: 0; filter: blur(14px); }
-  30%  { transform: translate(calc(-50% - 30px), 0) scale(1.2) rotate(-8deg); opacity: 1; filter: blur(0); }
-  38%  { transform: translate(calc(-50% - 30px), 0) scale(1.2) rotate(-8deg); }
-  50%  { transform: translate(-50%, 0) scale(0.92) rotate(-8deg); }
-  60%  { transform: translate(-50%, 0) scale(1.05) rotate(-8deg); }
-  72%  { transform: translate(-50%, 0) scale(1) rotate(-8deg); opacity: 1; }
-  100% { transform: translate(-50%, -40px) scale(0.9) rotate(-8deg); opacity: 0; }
+  0%   { transform: translate(calc(-50% + 280px), 0) scale(0.4) rotate(-5deg); opacity: 0; filter: blur(14px); }
+  30%  { transform: translate(-50%, 0) scale(1.12) rotate(-5deg); opacity: 1; filter: blur(0); }
+  38%  { transform: translate(-50%, 0) scale(1.12) rotate(-5deg); }
+  50%  { transform: translate(-50%, 0) scale(0.92) rotate(-5deg); }
+  60%  { transform: translate(-50%, 0) scale(1.05) rotate(-5deg); }
+  72%  { transform: translate(-50%, 0) scale(1) rotate(-5deg); opacity: 1; }
+  100% { transform: translate(-50%, -40px) scale(0.9) rotate(-5deg); opacity: 0; }
 }
 @keyframes labelFromLeft {
-  0%   { transform: translate(calc(-50% - 400px), 0) scale(0.4) rotate(6deg); opacity: 0; filter: blur(14px); }
-  30%  { transform: translate(calc(-50% + 30px), 0) scale(1.2) rotate(6deg); opacity: 1; filter: blur(0); }
-  38%  { transform: translate(calc(-50% + 30px), 0) scale(1.2) rotate(6deg); }
-  50%  { transform: translate(-50%, 0) scale(0.92) rotate(6deg); }
-  60%  { transform: translate(-50%, 0) scale(1.05) rotate(6deg); }
-  72%  { transform: translate(-50%, 0) scale(1) rotate(6deg); opacity: 1; }
-  100% { transform: translate(-50%, -40px) scale(0.9) rotate(6deg); opacity: 0; }
+  0%   { transform: translate(calc(-50% - 280px), 0) scale(0.4) rotate(4deg); opacity: 0; filter: blur(14px); }
+  30%  { transform: translate(-50%, 0) scale(1.12) rotate(4deg); opacity: 1; filter: blur(0); }
+  38%  { transform: translate(-50%, 0) scale(1.12) rotate(4deg); }
+  50%  { transform: translate(-50%, 0) scale(0.92) rotate(4deg); }
+  60%  { transform: translate(-50%, 0) scale(1.05) rotate(4deg); }
+  72%  { transform: translate(-50%, 0) scale(1) rotate(4deg); opacity: 1; }
+  100% { transform: translate(-50%, -40px) scale(0.9) rotate(4deg); opacity: 0; }
 }
 @keyframes labelFromTop {
-  0%   { transform: translate(-50%, -400px) scale(0.3) rotate(-5deg); opacity: 0; filter: blur(14px); }
-  26%  { transform: translate(-50%, 30px) scale(1.3) rotate(-5deg); opacity: 1; filter: blur(0); }
-  34%  { transform: translate(-50%, 30px) scale(1.3) rotate(-5deg); }
+  0%   { transform: translate(-50%, -280px) scale(0.3) rotate(-5deg); opacity: 0; filter: blur(14px); }
+  26%  { transform: translate(-50%, 30px) scale(1.2) rotate(-5deg); opacity: 1; filter: blur(0); }
+  34%  { transform: translate(-50%, 30px) scale(1.2) rotate(-5deg); }
   46%  { transform: translate(-50%, 0) scale(0.9) rotate(-5deg); }
   58%  { transform: translate(-50%, 0) scale(1.08) rotate(-5deg); }
   72%  { transform: translate(-50%, 0) scale(1) rotate(-5deg); opacity: 1; }
