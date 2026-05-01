@@ -9,25 +9,25 @@
       "name": "Salat",
       "label": "SALAT!",
       "combo": "COMBO x{n} SALAT!",
-      "broken": "STREAK BROKEN"
+      "broken": "SALAT STREAK BROKEN!"
     },
     "group": {
       "name": "In group",
       "label": "IN GROUP!",
       "combo": "COMBO x{n} IN GROUP!",
-      "broken": "STREAK BROKEN"
+      "broken": ""
     },
     "fire": {
       "name": "On fire",
       "label": "ON FIRE!",
       "combo": "COMBO x{n} ON FIRE!",
-      "broken": "FIRE OUT"
+      "broken": "FIRE OUT!"
     },
     "perfect_day": {
       "name": "Perfect day",
       "label": "PERFECT DAY!",
       "combo": "COMBO x{n} PERFECT DAY!",
-      "broken": "PERFECTION LOST"
+      "broken": "PERFECT DAY MISSED!"
     }
   }
 }

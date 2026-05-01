@@ -9,25 +9,25 @@
       "name": "Salat",
       "label": "SALAT !",
       "combo": "COMBO x{n} SALAT !",
-      "broken": "STREAK BRISÉ"
+      "broken": "SÉRIE SALAT BRISÉE !"
     },
     "group": {
       "name": "En groupe",
       "label": "EN GROUPE !",
       "combo": "COMBO x{n} EN GROUPE !",
-      "broken": "STREAK BRISÉ"
+      "broken": ""
     },
     "fire": {
       "name": "En feu",
       "label": "EN FEU !",
       "combo": "COMBO x{n} EN FEU !",
-      "broken": "FEU ÉTEINT"
+      "broken": "FEU ÉTEINT !"
     },
     "perfect_day": {
       "name": "Journée parfaite",
       "label": "JOURNÉE PARFAITE !",
       "combo": "COMBO x{n} JOURNÉE PARFAITE !",
-      "broken": "PERFECTION PERDUE"
+      "broken": "JOURNÉE PARFAITE LOUPÉE !"
     }
   }
 }
