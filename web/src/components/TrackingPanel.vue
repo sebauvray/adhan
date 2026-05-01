@@ -13,7 +13,7 @@
  * The combo / animation system (phase 3) will hook on the `committed` event:
  * it receives the response and pushes events to the global ComboOverlay queue.
  */
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, useTemplateRef, nextTick } from 'vue'
 import { api } from '@/api/client'
 import { useComboQueue, type ComboBatch } from '@/stores/comboQueue'
 
@@ -50,6 +50,23 @@ const isDirty = computed(() => {
   return false
 })
 
+// Panel dimensions (px) — measured via ResizeObserver so the SVG ring
+// can use real pixel coordinates and the stroke stays a clean 1.5px
+// regardless of panel aspect ratio.
+const panelEl = useTemplateRef<HTMLElement>('panel')
+const panelWidth = ref(0)
+const panelHeight = ref(0)
+let resizeObs: ResizeObserver | null = null
+
+const ringPerimeter = computed(() => {
+  const w = Math.max(0, panelWidth.value - 1)
+  const h = Math.max(0, panelHeight.value - 1)
+  // Approximate rounded-rect perimeter (close enough for dasharray purposes):
+  // 4 straight sides minus the rounded corner cutouts plus the arc lengths.
+  const r = 20
+  return 2 * (w + h) - 8 * r + 2 * Math.PI * r
+})
+
 // Progress 0→1 across the 2s buffer. Drives the SVG ring around the panel:
 // stroke draws from 0 (nothing visible at tap) to full perimeter at commit.
 // Colour goes red → orange → green so a fully-green ring means "validation
@@ -69,6 +86,19 @@ function resetSelection() {
   selected.value = new Set(props.initialLoggedIds)
 }
 
+function observePanel() {
+  if (!panelEl.value) return
+  if (resizeObs) resizeObs.disconnect()
+  const update = () => {
+    if (!panelEl.value) return
+    panelWidth.value = panelEl.value.offsetWidth
+    panelHeight.value = panelEl.value.offsetHeight
+  }
+  update()
+  resizeObs = new ResizeObserver(update)
+  resizeObs.observe(panelEl.value)
+}
+
 // Reset only when the panel actually transitions from closed → open or when
 // the active prayer changes. We deliberately don't watch `initialLoggedIds`:
 // the parent rebuilds it on every render, so watching it would wipe the
@@ -77,8 +107,14 @@ watch(() => props.open, (open) => {
   if (open) {
     resetSelection()
     stopTimer()
+    // Measure the panel after the open transition so the ring fits exactly.
+    nextTick(() => observePanel())
   } else {
     stopTimer()
+    if (resizeObs) {
+      resizeObs.disconnect()
+      resizeObs = null
+    }
   }
 })
 
@@ -166,7 +202,10 @@ function onBackdropClick(e: MouseEvent) {
   }
 }
 
-onUnmounted(() => stopTimer())
+onUnmounted(() => {
+  stopTimer()
+  if (resizeObs) resizeObs.disconnect()
+})
 </script>
 
 <template>
@@ -176,19 +215,22 @@ onUnmounted(() => stopTimer())
     style="display: flex"
     @click="onBackdropClick"
   >
-    <div class="tracking-panel">
+    <div ref="panel" class="tracking-panel">
       <svg
-        v-show="isDirty"
+        v-show="isDirty && panelWidth > 0"
         class="tracking-progress-ring"
-        preserveAspectRatio="none"
-        viewBox="0 0 100 100"
+        :width="panelWidth"
+        :height="panelHeight"
+        :viewBox="`0 0 ${panelWidth} ${panelHeight}`"
       >
         <rect
-          x="1" y="1" width="98" height="98" rx="6" ry="6"
+          x="0.75" y="0.75"
+          :width="panelWidth - 1.5"
+          :height="panelHeight - 1.5"
+          rx="20" ry="20"
           fill="none"
-          pathLength="100"
-          stroke-dasharray="100"
-          :stroke-dashoffset="100 - progress * 100"
+          :stroke-dasharray="ringPerimeter"
+          :stroke-dashoffset="ringPerimeter * (1 - progress)"
           :stroke="strokeColor"
           stroke-width="1.5"
           stroke-linecap="round"
@@ -243,19 +285,12 @@ onUnmounted(() => stopTimer())
  * green" reads as "success, validation incoming". */
 .tracking-progress-ring {
   position: absolute;
-  inset: -6px;
-  width: calc(100% + 12px);
-  height: calc(100% + 12px);
+  top: 0;
+  left: 0;
   pointer-events: none;
-  /* SVG viewBox is 100x100 with stroke-linecap="round"; perimeter starts
-   * top-left and we rotate so it grows from 12 o'clock clockwise — feels
-   * like a clock filling up. */
-  transform: rotate(-90deg);
-  transform-origin: center;
   overflow: visible;
 }
 .tracking-progress-ring rect {
   transition: stroke 250ms ease-out;
-  filter: drop-shadow(0 0 4px currentColor);
 }
 </style>
