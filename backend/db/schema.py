@@ -71,9 +71,21 @@ CREATE TABLE IF NOT EXISTS prayer_logs (
     user_id    INTEGER NOT NULL,
     prayer     TEXT    NOT NULL,
     date       TEXT    NOT NULL,
+    on_time    INTEGER DEFAULT 0,
+    in_group   INTEGER DEFAULT 0,
     created_at TEXT    DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (user_id, prayer, date)
+);
+
+CREATE TABLE IF NOT EXISTS tracker_state (
+    user_id       INTEGER NOT NULL,
+    tracker_id    TEXT    NOT NULL,
+    total         INTEGER DEFAULT 0,
+    current_combo INTEGER DEFAULT 0,
+    best_combo    INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, tracker_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS auth (
@@ -237,6 +249,23 @@ def _migrate_audio_provider(conn):
         pass
 
 
+def _migrate_prayer_log_columns(conn):
+    """Add on_time / in_group columns to prayer_logs if missing.
+    Existing rows default to 0 for both — backfill is intentionally skipped:
+    we don't have reliable adhan windows for past logs and we don't know
+    which were in group, so legacy logs simply don't contribute to those trackers."""
+    try:
+        cur = conn.execute("PRAGMA table_info(prayer_logs)")
+        columns = [row[1] for row in cur.fetchall()]
+        if 'on_time' not in columns:
+            conn.execute("ALTER TABLE prayer_logs ADD COLUMN on_time INTEGER DEFAULT 0")
+        if 'in_group' not in columns:
+            conn.execute("ALTER TABLE prayer_logs ADD COLUMN in_group INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
+
 def _migrate_auth_user_id(conn):
     """Add user_id column to auth if missing (links admin to a tracking user)."""
     try:
@@ -261,4 +290,5 @@ def init_db():
     _migrate_hash_tokens(conn)
     _migrate_auth_user_id(conn)
     _migrate_audio_provider(conn)
+    _migrate_prayer_log_columns(conn)
     conn.close()
