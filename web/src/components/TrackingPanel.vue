@@ -36,7 +36,7 @@ const emit = defineEmits<{
   (e: 'committed', payload: { prayer: string; date: string; add: number[]; remove: number[]; in_group: boolean }): void
 }>()
 
-const BUFFER_MS = 3000
+const BUFFER_MS = 2000
 
 const selected = ref<Set<number>>(new Set())
 const timerRemaining = ref(0)
@@ -52,8 +52,9 @@ const isDirty = computed(() => {
 
 const timerColor = computed<'green' | 'orange' | 'red' | 'idle'>(() => {
   if (!isDirty.value) return 'idle'
-  if (timerRemaining.value > 2000) return 'green'
-  if (timerRemaining.value > 1000) return 'orange'
+  // Tiers split for a 2s window: green > 1.4s, orange > 0.7s, red below.
+  if (timerRemaining.value > 1400) return 'green'
+  if (timerRemaining.value > 700) return 'orange'
   return 'red'
 })
 
