@@ -150,9 +150,12 @@ async function commit() {
   }
 }
 
-function onBackdropClick() {
-  // Click outside = "I'm done" → commit if there's anything pending,
-  // otherwise just close silently.
+function onBackdropClick(e: MouseEvent) {
+  // Click outside the panel = "I'm done" → commit if there's anything
+  // pending, otherwise just close silently. We check the target manually
+  // instead of `.self` because some browsers / backdrop-filter combos can
+  // make the modifier flake out.
+  if (e.target !== e.currentTarget) return
   if (isDirty.value) {
     stopTimer()
     commit()
@@ -169,7 +172,7 @@ onUnmounted(() => stopTimer())
     v-show="open"
     :class="['tracking-overlay', { open }]"
     style="display: flex"
-    @click.self="onBackdropClick"
+    @click="onBackdropClick"
   >
     <div class="tracking-panel">
       <div v-if="!warningMode" class="tracking-header">
