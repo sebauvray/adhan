@@ -1,0 +1,33 @@
+{
+  "tracking": {
+    "question": "Who did you pray with?",
+    "validate_hint": "{n}s left to add someone else",
+    "validate_now": "Validate"
+  },
+  "trackers": {
+    "salat": {
+      "name": "Salat",
+      "label": "SALAT!",
+      "combo": "COMBO x{n} SALAT!",
+      "broken": "STREAK BROKEN"
+    },
+    "group": {
+      "name": "In group",
+      "label": "IN GROUP!",
+      "combo": "COMBO x{n} IN GROUP!",
+      "broken": "STREAK BROKEN"
+    },
+    "fire": {
+      "name": "On fire",
+      "label": "ON FIRE!",
+      "combo": "COMBO x{n} ON FIRE!",
+      "broken": "FIRE OUT"
+    },
+    "perfect_day": {
+      "name": "Perfect day",
+      "label": "PERFECT DAY!",
+      "combo": "COMBO x{n} PERFECT DAY!",
+      "broken": "PERFECTION LOST"
+    }
+  }
+}
