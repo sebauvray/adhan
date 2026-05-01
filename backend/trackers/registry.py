@@ -13,6 +13,7 @@ from db.config import (
 from .base import Tracker, TrackerEvent
 from .fire import FireTracker
 from .group import GroupTracker
+from .on_time import OnTimeTracker
 from .perfect_day import PerfectDayTracker
 from .salat import SalatTracker
 
@@ -20,6 +21,7 @@ from .salat import SalatTracker
 TRACKERS: tuple[Tracker, ...] = (
     SalatTracker(),
     GroupTracker(),
+    OnTimeTracker(),
     FireTracker(),
     PerfectDayTracker(),
 )
@@ -47,9 +49,9 @@ def evaluate_for_log(user_id: int, log: dict) -> list[TrackerEvent]:
         )
         raw[tracker.id] = (broken, result.total, result.combo)
 
-    # Climax order: group, salat, fire, perfect_day. Skipped trackers absent.
+    # Climax order from least-rare to most-rare. Skipped trackers absent.
     events: list[TrackerEvent] = []
-    for tid in ("group", "salat", "fire", "perfect_day"):
+    for tid in ("group", "salat", "on_time", "fire", "perfect_day"):
         if tid not in raw:
             continue
         broken, total, combo = raw[tid]

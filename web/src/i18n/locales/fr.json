@@ -11,6 +11,12 @@
       "combo": "COMBO x{n} SALAT !",
       "broken": "SÉRIE SALAT BRISÉE !"
     },
+    "on_time": {
+      "name": "À l'heure",
+      "label": "À L'HEURE !",
+      "combo": "COMBO x{n} À L'HEURE !",
+      "broken": "PRIÈRE EN RETARD !"
+    },
     "group": {
       "name": "En groupe",
       "label": "EN GROUPE !",

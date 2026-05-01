@@ -11,6 +11,12 @@
       "combo": "COMBO x{n} SALAT!",
       "broken": "SALAT STREAK BROKEN!"
     },
+    "on_time": {
+      "name": "On time",
+      "label": "ON TIME!",
+      "combo": "COMBO x{n} ON TIME!",
+      "broken": "PRAYER LATE!"
+    },
     "group": {
       "name": "In group",
       "label": "IN GROUP!",

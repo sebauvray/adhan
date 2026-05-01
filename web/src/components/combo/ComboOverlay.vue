@@ -37,6 +37,7 @@ const currentEvent = computed<TrackerEvent | null>(() => {
 const TRACKER_VISUAL: Record<string, { variant: string; direction: string; color: string; flash: 'soft' | 'strong' }> = {
   group:       { variant: 'group',   direction: 'from-left',  color: '#aab0ff', flash: 'soft' },
   salat:       { variant: 'salat',   direction: 'from-right', color: '#ffd000', flash: 'soft' },
+  on_time:     { variant: 'on_time', direction: 'from-left',  color: '#5ae0ff', flash: 'soft' },
   fire:        { variant: 'fire',    direction: 'from-right', color: '#ff7f3f', flash: 'strong' },
   perfect_day: { variant: 'perfect', direction: 'from-top',   color: '#ffeb3b', flash: 'strong' },
 }
@@ -233,6 +234,10 @@ const flashStrong = computed(() => {
 }
 .combo-label.variant-group {
   background: linear-gradient(180deg, #b3b8ff 0%, #6a5cff 50%, #00c2ff 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.combo-label.variant-on_time {
+  background: linear-gradient(180deg, #d4ffff 0%, #5ae0ff 50%, #00a5d9 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 .combo-label.variant-fire {
