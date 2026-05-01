@@ -873,6 +873,35 @@ async def api_log_prayer(payload: dict, authorization: Optional[str] = Header(No
     return {"success": True}
 
 
+@app.post("/api/prayer-log/batch")
+async def api_log_prayer_batch(payload: dict, authorization: Optional[str] = Header(None)):
+    """Log a single prayer for multiple users at once.
+
+    The frontend buffers taps for ~2s after the first one (resetting on each
+    new tap) before posting here. A batch with 2+ users is treated as a group
+    prayer — `in_group` is set to true for each created log. A single-user
+    batch is a normal individual log.
+
+    Tracker events / combos are computed in a later phase; this endpoint
+    only persists the logs for now."""
+    prayer = payload.get('prayer')
+    date = payload.get('date')
+    user_ids = payload.get('user_ids') or []
+    if not all([prayer, date]) or not isinstance(user_ids, list) or not user_ids:
+        raise HTTPException(status_code=400, detail="prayer, date et user_ids requis")
+    if not _can_edit(prayer, date):
+        raise HTTPException(status_code=403, detail="Validation interdite pour cette prière")
+
+    in_group = len(user_ids) > 1
+    for uid in user_ids:
+        try:
+            log_prayer(int(uid), prayer, date, in_group=in_group)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"user_id invalide : {uid!r}")
+
+    return {"success": True, "in_group": in_group, "count": len(user_ids)}
+
+
 @app.delete("/api/prayer-log")
 async def api_unlog_prayer(payload: dict, authorization: Optional[str] = Header(None)):
     user_id = _resolve_log_user(payload, authorization)
