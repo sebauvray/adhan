@@ -321,3 +321,61 @@ def _login_long_lived_token(base: str, username: str, password: str, device_name
     if not token:
         raise AudioProviderUnreachable("MA login n'a pas renvoyé de token")
     return token
+
+
+def ensure_media_filesystem_provider(
+    token: str,
+    host: str | None = None,
+    port: str | None = None,
+    path: str = "/media",
+) -> None:
+    """Register MA's built-in Filesystem provider on our shared `/media` folder
+    and trigger a sync, so adhan/alert uploads show up in MA's library.
+
+    Idempotent: skips if a `filesystem_local` provider already exists. Best-effort
+    — the caller swallows failures because playback never relies on MA's library
+    (it streams our `/api/audio/{kind}` URL via play_announcement). Only meaningful
+    for the *bundled* MA, whose container mounts our `audio-media` volume at /media.
+    """
+    import asyncio
+
+    asyncio.run(_ensure_media_filesystem_provider_async(token, host, port, path))
+
+
+async def _ensure_media_filesystem_provider_async(
+    token: str, host: str | None, port: str | None, path: str
+) -> None:
+    import asyncio
+
+    import aiohttp
+    from music_assistant_client import MusicAssistantClient
+
+    base = f"http://{host or get_value('music_assistant', 'HOST', 'host.docker.internal')}:" \
+           f"{port or get_value('music_assistant', 'PORT', '8095')}"
+
+    async with aiohttp.ClientSession() as session:
+        client = MusicAssistantClient(base, session, token=token)
+        init_ready = asyncio.Event()
+        listen_task = asyncio.create_task(client.start_listening(init_ready=init_ready))
+        try:
+            await asyncio.wait_for(init_ready.wait(), timeout=30)
+
+            existing = await client.config.get_provider_configs(provider_domain="filesystem_local")
+            if existing:
+                instance_ids = [i for i in (getattr(c, "instance_id", None) for c in existing) if i]
+                logger.info("MA filesystem provider already present — re-syncing")
+            else:
+                saved = await client.config.save_provider_config("filesystem_local", {"path": path})
+                sid = getattr(saved, "instance_id", None)
+                instance_ids = [sid] if sid else []
+                logger.info("MA filesystem provider added on %s", path)
+
+            # Always sync so a freshly uploaded file is (re)indexed. Empty list →
+            # None → MA syncs every provider, which is fine.
+            await client.music.start_sync(providers=instance_ids or None)
+        finally:
+            listen_task.cancel()
+            try:
+                await listen_task
+            except BaseException:  # noqa: BLE001 - cancellation/teardown noise is irrelevant here
+                pass

@@ -1,8 +1,12 @@
+import logging
 import os
 import signal
 import sys
+import threading
 from datetime import datetime, time as dtime, timedelta
 from typing import Optional
+
+logger = logging.getLogger("adhan.api")
 
 from fastapi import FastAPI, Response, HTTPException, Header, Cookie, UploadFile, File
 from fastapi.responses import FileResponse
@@ -548,8 +552,38 @@ async def api_audio_start_provider(payload: StartProviderPayload):
             # wizard can offer a clean reinstall.
             token = bootstrap_music_assistant(payload.admin_username, payload.admin_password)
             set_value("music_assistant", "TOKEN", token)
+            _register_ma_media_library(payload.mode, token)
 
     return runner.start_provider(payload.provider, on_ready=_on_ready)
+
+
+def _register_ma_media_library(mode: str, token: str) -> None:
+    """Best-effort: expose our /media uploads in MA's library. Only for the
+    bundled MA (its container mounts our audio-media volume at /media). Never
+    fatal — adhan playback works without the library."""
+    if mode != "bundled":
+        return
+    from audio.music_assistant import ensure_media_filesystem_provider
+    try:
+        ensure_media_filesystem_provider(token)
+    except Exception:
+        logger.warning("Could not register MA /media filesystem provider", exc_info=True)
+
+
+def _sync_ma_media_library_after_upload() -> None:
+    """After an upload, make MA (re)index /media so the new file appears in its
+    library. No-op unless the active provider is the bundled Music Assistant with
+    a stored token. Runs in a background thread: it's best-effort (never blocks
+    the upload response) and `ensure_media_filesystem_provider` calls asyncio.run,
+    which would explode inside FastAPI's running event loop."""
+    if active_provider_id() != "music-assistant" or active_mode() != "bundled":
+        return
+    token = get_value("music_assistant", "TOKEN", "")
+    if not token:
+        return
+    threading.Thread(
+        target=_register_ma_media_library, args=("bundled", token), daemon=True
+    ).start()
 
 
 @app.post("/api/audio/reset-provider")
@@ -581,6 +615,7 @@ async def api_audio_reset_provider(payload: StartProviderPayload):
         if provider == "music-assistant" and payload.admin_username and payload.admin_password:
             token = bootstrap_music_assistant(payload.admin_username, payload.admin_password)
             set_value("music_assistant", "TOKEN", token)
+            _register_ma_media_library(payload.mode, token)
 
     return runner.start_provider(payload.provider, on_ready=_on_ready)
 
@@ -776,6 +811,7 @@ async def api_upload_adhan(
         f.write(content)
 
     set_value('owntone', 'ADHAN_FILE', dest)
+    _sync_ma_media_library_after_upload()
     return {"success": True, "filename": file.filename, "path": dest}
 
 
@@ -811,6 +847,7 @@ async def api_upload_alert(
         f.write(content)
 
     set_value('owntone', 'ALERT_FILE', dest)
+    _sync_ma_media_library_after_upload()
     return {"success": True, "filename": file.filename, "path": dest}
 
 
