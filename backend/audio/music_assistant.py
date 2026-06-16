@@ -29,6 +29,7 @@ from .base import (
     AudioFileNotFound,
     AudioProvider,
     AudioProviderUnreachable,
+    MusicAssistantAlreadyConfigured,
     Speaker,
     SpeakerNotFound,
 )
@@ -227,6 +228,16 @@ class MusicAssistantProvider(AudioProvider):
             return False
 
 
+def _looks_already_onboarded(resp: "requests.Response", data: dict) -> bool:
+    """True when MA's /setup refuses because an admin account already exists.
+
+    MA replies 4xx with a message like "Setup already completed" — we match on
+    that intent rather than the precise wording so a future rephrase doesn't
+    silently turn the reuse path back into a hard failure."""
+    msg = (data.get("error") or resp.text or "").lower()
+    return "already" in msg or "exists" in msg or resp.status_code == 409
+
+
 def bootstrap_music_assistant(
     username: str,
     password: str,
@@ -234,41 +245,79 @@ def bootstrap_music_assistant(
     port: str | None = None,
     device_name: str = "Adhan Home",
 ) -> str:
-    """One-shot onboarding for a fresh Music Assistant instance.
+    """Make sure a usable MA admin token exists, onboarding or reusing as needed.
 
-    Calls MA's `POST /setup` with the supplied admin credentials and returns
-    the long-lived token MA hands back. Idempotent only on first run — once
-    onboarding is done, MA's /setup endpoint refuses to recreate the admin.
+    Two paths, decided by how MA's `POST /setup` answers:
+      - *fresh instance* → /setup creates the admin and returns a token.
+      - *already onboarded* (e.g. a previous install left its `ma-data` volume)
+        → we log in with the same credentials and mint a long-lived token.
 
-    The caller is responsible for persisting the returned token (e.g. into
-    the SQLite `music_assistant.TOKEN` row) and never having to ask the user.
+    We deliberately don't pre-check `/info` for an onboarding flag: MA exposes
+    `onboard_done` (provider/player setup finished) which is *not* the same as
+    "an admin exists", so reading it picked the wrong branch. Letting /setup
+    itself tell us is unambiguous.
+
+    Raises `MusicAssistantAlreadyConfigured` when MA already has an admin but
+    the supplied credentials don't unlock it — the caller surfaces a "start
+    fresh" choice. The returned token must be persisted by the caller (into the
+    SQLite `music_assistant.TOKEN` row) so the user is never asked for it.
     """
     base = f"http://{host or get_value('music_assistant', 'HOST', 'host.docker.internal')}:" \
            f"{port or get_value('music_assistant', 'PORT', '8095')}"
 
-    # Confirm onboarding is still pending — otherwise we'd 4xx for nothing.
     try:
-        info = requests.get(f"{base}/info", timeout=5).json()
+        resp = requests.post(
+            f"{base}/setup",
+            json={"username": username, "password": password, "device_name": device_name},
+            timeout=15,
+        )
     except requests.RequestException as e:
         raise AudioProviderUnreachable(f"MA injoignable : {e}") from e
 
-    if info.get("onboard_done"):
-        raise AudioProviderUnreachable(
-            "Music Assistant a déjà un admin configuré. Vide le volume ma-data pour repartir à zéro."
-        )
-
-    resp = requests.post(
-        f"{base}/setup",
-        json={"username": username, "password": password, "device_name": device_name},
-        timeout=15,
-    )
     data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
-    if not (resp.ok and data.get("success")):
-        raise AudioProviderUnreachable(
-            data.get("error") or f"MA /setup HTTP {resp.status_code}"
-        )
 
-    token = data.get("token") or ""
+    if resp.ok and data.get("success"):
+        token = data.get("token") or ""
+        if not token:
+            raise AudioProviderUnreachable("MA /setup n'a pas renvoyé de token")
+        return token
+
+    if not _looks_already_onboarded(resp, data):
+        raise AudioProviderUnreachable(data.get("error") or f"MA /setup HTTP {resp.status_code}")
+
+    # Already onboarded — reuse it by logging in with the same credentials.
+    return _login_long_lived_token(base, username, password, device_name)
+
+
+def _login_long_lived_token(base: str, username: str, password: str, device_name: str) -> str:
+    """Log into an already-onboarded MA and return a long-lived token.
+
+    Uses the official `music_assistant_client` helper, which logs in over HTTP
+    then opens MA's WebSocket to create a persistent token (a plain login only
+    yields a short-lived session token, useless for a daemon that fires for
+    years). Raises `MusicAssistantAlreadyConfigured` when the credentials don't
+    match the existing admin."""
+    import asyncio
+
+    try:
+        from music_assistant_client import login_with_token
+    except ImportError as e:  # pragma: no cover - dependency must be installed in the image
+        raise AudioProviderUnreachable(
+            "music-assistant-client manquant : impossible de réutiliser l'installation existante."
+        ) from e
+
+    try:
+        _user, token = asyncio.run(
+            login_with_token(base, username, password, token_name=device_name)
+        )
+    except Exception as e:
+        # We already reached /setup, so MA is up — a failure here is the
+        # credentials not matching the existing admin, not a network issue.
+        raise MusicAssistantAlreadyConfigured(
+            "Music Assistant a déjà un compte admin, mais ces identifiants ne correspondent pas. "
+            "Repars de zéro pour le réinstaller."
+        ) from e
+
     if not token:
-        raise AudioProviderUnreachable("MA /setup n'a pas renvoyé de token")
+        raise AudioProviderUnreachable("MA login n'a pas renvoyé de token")
     return token

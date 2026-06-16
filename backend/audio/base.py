@@ -36,6 +36,12 @@ class SpeakerNotFound(AudioProviderError):
     """None of the requested speakers were found in the provider."""
 
 
+class MusicAssistantAlreadyConfigured(AudioProviderError):
+    """Music Assistant already has an admin (from a previous install) and the
+    credentials supplied by the wizard don't match it, so we can neither
+    re-onboard nor log in. The only recovery is wiping the MA data volume."""
+
+
 class AudioProvider(ABC):
     """Interface every audio provider must implement.
 

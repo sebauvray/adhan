@@ -843,6 +843,14 @@ body.settings-page {
 
 .msg-error { background: #fde8e8; color: #c53030; }
 .msg-success { background: #e8f5e9; color: #2e7d32; }
+.msg-warn { background: #fff4e5; color: #9a5b00; text-align: left; }
+
+.btn-danger {
+  background: #c53030;
+  color: white;
+}
+.btn-danger:hover { background: #9b2424; }
+.btn-danger:disabled { opacity: 0.6; cursor: default; }
 
 .token-display {
   margin-top: 1rem;

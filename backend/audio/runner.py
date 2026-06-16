@@ -20,6 +20,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .base import MusicAssistantAlreadyConfigured
+
 logger = logging.getLogger("audio.runner")
 
 
@@ -44,6 +46,9 @@ class StartStatus:
     message: str = ""
     started_at: float = 0.0
     error: Optional[str] = None
+    # Machine-readable failure reason for cases the UI handles specially
+    # (e.g. "ma_already_configured" → offer a clean-reinstall choice).
+    error_code: Optional[str] = None
 
 
 _status = StartStatus()
@@ -59,6 +64,7 @@ def get_status() -> dict:
             "message": _status.message,
             "started_at": _status.started_at,
             "error": _status.error,
+            "error_code": _status.error_code,
         }
 
 
@@ -180,6 +186,10 @@ def _start_provider_thread(provider: str, on_ready) -> None:
             try:
                 _set_status(state="bootstrapping", message="Configuration automatique…")
                 on_ready(provider)
+            except MusicAssistantAlreadyConfigured as e:
+                logger.warning("MA already configured with different credentials: %s", e)
+                _set_status(state="failed", error=str(e), error_code="ma_already_configured")
+                return
             except Exception as e:
                 logger.exception("Bootstrap failed for %s", provider)
                 _set_status(state="failed", error=f"bootstrap: {e}")
@@ -206,6 +216,7 @@ def start_provider(provider: str, on_ready=None) -> dict:
         _status.message = "Préparation…"
         _status.started_at = time.time()
         _status.error = None
+        _status.error_code = None
         _thread = threading.Thread(
             target=_start_provider_thread,
             args=(provider, on_ready),
@@ -223,3 +234,35 @@ def stop_provider(provider: str) -> None:
         _compose("--profile", provider, "stop", provider)
     except subprocess.CalledProcessError:
         pass
+
+
+# Named volumes holding a provider's persistent state. Removing one resets the
+# provider to a pristine, never-installed state (used by "start fresh").
+PROVIDER_DATA_VOLUMES = {
+    "music-assistant": "ma-data",
+}
+
+
+def reset_provider_data(provider: str) -> None:
+    """Stop the provider and delete its data volume, so the next start onboards
+    from scratch. Used when MA was already onboarded with unknown credentials.
+
+    Raises RuntimeError if docker isn't available or the volume can't be removed
+    (other than 'not found', which is fine — nothing to reset)."""
+    if not _docker_available():
+        raise RuntimeError("docker indisponible — impossible de réinitialiser le provider")
+
+    volume_suffix = PROVIDER_DATA_VOLUMES.get(provider)
+    if not volume_suffix:
+        raise RuntimeError(f"Aucun volume de données à réinitialiser pour {provider}")
+
+    stop_provider(provider)
+
+    volume = f"{COMPOSE_PROJECT}_{volume_suffix}"
+    result = subprocess.run(
+        ["docker", "volume", "rm", volume],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0 and "no such volume" not in result.stderr.lower():
+        raise RuntimeError(f"Échec suppression du volume {volume} : {result.stderr.strip()}")
+    logger.info("Reset provider data: removed volume %s", volume)

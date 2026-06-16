@@ -541,13 +541,46 @@ async def api_audio_start_provider(payload: StartProviderPayload):
 
     def _on_ready(provider: str) -> None:
         if provider == "music-assistant" and payload.admin_username and payload.admin_password:
-            try:
-                token = bootstrap_music_assistant(payload.admin_username, payload.admin_password)
-                set_value("music_assistant", "TOKEN", token)
-            except AudioProviderUnreachable as e:
-                # Already onboarded? Skip silently — token must already be in DB or will be set later.
-                if "déjà un admin" not in str(e):
-                    raise
+            # Onboards a fresh MA, or reuses an existing one by logging in with
+            # the same credentials. Raises MusicAssistantAlreadyConfigured when
+            # MA is already onboarded with credentials that don't match — the
+            # runner turns that into the `ma_already_configured` status so the
+            # wizard can offer a clean reinstall.
+            token = bootstrap_music_assistant(payload.admin_username, payload.admin_password)
+            set_value("music_assistant", "TOKEN", token)
+
+    return runner.start_provider(payload.provider, on_ready=_on_ready)
+
+
+@app.post("/api/audio/reset-provider")
+async def api_audio_reset_provider(payload: StartProviderPayload):
+    """Wipe the provider's data volume and re-run onboarding from scratch.
+
+    The escape hatch for `ma_already_configured`: a previous install left a
+    Music Assistant admin we can't unlock, so the user opts to start fresh.
+    Like /start-provider, this is part of the unauthenticated setup flow."""
+    from audio import runner
+    from audio.music_assistant import bootstrap_music_assistant
+
+    manifest = get_manifest(payload.provider)
+    if manifest is None:
+        raise HTTPException(status_code=400, detail=f"Provider audio inconnu : {payload.provider}")
+
+    try:
+        runner.reset_provider_data(payload.provider)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    _persist_audio_config(AudioConfig(
+        provider=payload.provider,
+        mode=payload.mode,
+        config=payload.config,
+    ))
+
+    def _on_ready(provider: str) -> None:
+        if provider == "music-assistant" and payload.admin_username and payload.admin_password:
+            token = bootstrap_music_assistant(payload.admin_username, payload.admin_password)
+            set_value("music_assistant", "TOKEN", token)
 
     return runner.start_provider(payload.provider, on_ready=_on_ready)
 

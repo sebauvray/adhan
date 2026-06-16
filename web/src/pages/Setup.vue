@@ -25,6 +25,8 @@ const startingProvider = ref<string>('')                    // id of provider be
 const startState = ref<string>('idle')                      // idle | starting | bootstrapping | ready | failed
 const startMessage = ref<string>('')
 const startError = ref<string>('')
+const startErrorCode = ref<string>('')                      // machine-readable failure reason (e.g. ma_already_configured)
+const resetting = ref(false)                                // wiping the provider volume for a fresh reinstall
 let pollHandle: ReturnType<typeof setInterval> | null = null
 
 const data = reactive({
@@ -172,15 +174,22 @@ async function confirmPick() {
 
   // Trigger the visual transition: this hides the other card.
   startingProvider.value = p.id
+  await startProviderRequest(p.id, '/audio/start-provider')
+}
+
+// Shared by the initial start and the "start fresh" reinstall — both POST the
+// same payload and then poll, differing only in the endpoint.
+async function startProviderRequest(providerId: string, endpoint: string) {
   startState.value = 'starting'
-  startMessage.value = `Démarrage de ${p.label}…`
+  startMessage.value = 'Démarrage…'
   startError.value = ''
+  startErrorCode.value = ''
 
   try {
-    await api('/audio/start-provider', {
+    await api(endpoint, {
       method: 'POST',
       body: JSON.stringify({
-        provider: p.id,
+        provider: providerId,
         mode: data.audio.mode,
         config: data.audio.config,
         admin_username: data.username,
@@ -198,7 +207,7 @@ function pollStartStatus() {
   if (pollHandle) clearInterval(pollHandle)
   pollHandle = setInterval(async () => {
     try {
-      const s = await api<{ state: string; message: string; error: string | null }>('/audio/start-status')
+      const s = await api<{ state: string; message: string; error: string | null; error_code: string | null }>('/audio/start-status')
       startState.value = s.state
       startMessage.value = s.message || ''
       if (s.state === 'ready') {
@@ -206,6 +215,7 @@ function pollStartStatus() {
         finishAfterStart()
       } else if (s.state === 'failed') {
         startError.value = s.error || 'Erreur inconnue'
+        startErrorCode.value = s.error_code || ''
         if (pollHandle) clearInterval(pollHandle)
       }
     } catch {
@@ -218,6 +228,19 @@ function retryProvider() {
   startingProvider.value = ''
   startState.value = 'idle'
   startError.value = ''
+  startErrorCode.value = ''
+}
+
+// "Repartir de zéro": wipe the existing (locked) MA install and onboard fresh.
+async function resetAndReinstall() {
+  const providerId = startingProvider.value
+  if (!providerId || resetting.value) return
+  resetting.value = true
+  try {
+    await startProviderRequest(providerId, '/audio/reset-provider')
+  } finally {
+    resetting.value = false
+  }
 }
 
 function finishAfterStart() {
@@ -409,6 +432,25 @@ function scheduleRedirect() {
                 <div v-if="startState !== 'failed'" class="progress-row">
                   <span class="spinner big"></span>
                   <span>{{ startMessage || 'Démarrage…' }}</span>
+                </div>
+                <!-- Already-configured: a previous install left a locked MA. Offer reuse-or-reset. -->
+                <div v-else-if="startErrorCode === 'ma_already_configured'" class="msg msg-warn" style="margin-top: 0.6rem">
+                  <strong>Une installation Music Assistant existe déjà</strong>
+                  <p style="margin: 0.4rem 0">
+                    On a détecté une configuration Music Assistant d'une installation précédente, et
+                    ces identifiants ne permettent pas d'y accéder. Que veux-tu faire ?
+                  </p>
+                  <div class="actions" style="margin-top: 0.6rem">
+                    <button type="button" class="btn btn-secondary" :disabled="resetting" @click="retryProvider">
+                      Annuler
+                    </button>
+                    <button type="button" class="btn btn-danger" :disabled="resetting" @click="resetAndReinstall">
+                      {{ resetting ? 'Réinitialisation…' : 'Repartir de zéro' }}
+                    </button>
+                  </div>
+                  <p style="margin-top: 0.5rem; font-size: 0.78rem; opacity: 0.8">
+                    « Repartir de zéro » efface l'installation Music Assistant actuelle. Cette action est irréversible.
+                  </p>
                 </div>
                 <div v-else class="msg msg-error" style="margin-top: 0.6rem">
                   {{ startError }}
