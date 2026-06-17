@@ -1,9 +1,21 @@
-.PHONY: help up down clean open admin admin-list admin-create admin-reset admin-delete
+.PHONY: help up down clean open admin admin-list admin-create admin-reset admin-delete \
+        owntone-install owntone-ensure owntone-up owntone-down
 
 # Pick up CONTAINER_NAME_API (and any other override) from .env if present.
 ifneq (,$(wildcard .env))
 include .env
 export
+endif
+
+# Native OwnTone (macOS): when OWNTONE_NATIVE=true, Adhan Home builds & runs OwnTone
+# on the host (a containerized AirPlay sender can't reach HomePods from the Docker VM IP).
+OWNTONE_NATIVE   := $(or $(OWNTONE_NATIVE),false)
+OWNTONE_NATIVE_BIN := $(HOME)/owntone_data/usr/sbin/owntone
+
+# When native, expose the absolute media dir to docker-compose: the api container
+# bind-mounts it at the same path so uploads land where OwnTone scans.
+ifeq ($(OWNTONE_NATIVE),true)
+export OWNTONE_MEDIA_DIR := $(or $(OWNTONE_MEDIA_DIR),$(HOME)/Music/OwnTone)
 endif
 
 CONTAINER_API := $(or $(CONTAINER_NAME_API),adhan-api)
@@ -38,7 +50,7 @@ help:
 ##   sera lancé à la demande par l'API quand l'user le choisira dans le wizard.
 ## - Lancements suivants : si la DB contient déjà un AUDIO_PROVIDER en mode bundled,
 ##   on relance aussi son container pour qu'il survive à un reboot machine.
-up:
+up: owntone-ensure
 	@PROVIDER=$$(sqlite3 $(DB_PATH) "SELECT value FROM config WHERE key='AUDIO_PROVIDER'" 2>/dev/null); \
 	MODE=$$(sqlite3 $(DB_PATH) "SELECT value FROM config WHERE key='AUDIO_PROVIDER_MODE'" 2>/dev/null); \
 	if [ -n "$$PROVIDER" ] && [ "$$MODE" = "bundled" ]; then \
@@ -48,6 +60,35 @@ up:
 		echo "→ Premier lancement : api + front uniquement (provider audio à choisir dans le wizard)"; \
 		docker compose up -d --build --remove-orphans api front; \
 	fi
+
+## Installer OwnTone nativement sur le Mac (deps + build + service launchd)
+owntone-install:
+	bash scripts/install-owntone-native.sh
+
+## Garantir OwnTone natif au démarrage quand OWNTONE_NATIVE=true (appelé par `up`).
+## - binaire absent → install complète ; présent → on s'assure juste que le service tourne.
+owntone-ensure:
+	@if [ "$(OWNTONE_NATIVE)" = "true" ]; then \
+		if [ ! -x "$(OWNTONE_NATIVE_BIN)" ]; then \
+			echo "→ OwnTone natif absent : installation…"; \
+			bash scripts/install-owntone-native.sh; \
+		else \
+			echo "→ OwnTone natif présent : vérification du service launchd…"; \
+			bash scripts/install-owntone-native.sh --service-only; \
+		fi; \
+	fi
+
+## (Re)démarrer le service OwnTone natif
+owntone-up:
+	@launchctl kickstart -k gui/$$(id -u)/com.adhanhome.owntone 2>/dev/null \
+		&& echo "→ OwnTone natif (re)démarré" \
+		|| echo "Service introuvable — lance d'abord : make owntone-install"
+
+## Arrêter le service OwnTone natif
+owntone-down:
+	@launchctl bootout gui/$$(id -u)/com.adhanhome.owntone 2>/dev/null \
+		&& echo "→ OwnTone natif arrêté" \
+		|| echo "Service déjà arrêté"
 
 ## Arrêter le projet (englobe tous les profiles audio)
 down:
