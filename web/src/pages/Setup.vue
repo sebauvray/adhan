@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import CardLayout from '@/layouts/CardLayout.vue'
 import EmojiPicker from '@/components/EmojiPicker.vue'
+import PasswordInput from '@/components/PasswordInput.vue'
 import ProviderFields from '@/components/audio/ProviderFields.vue'
 import type { ProviderManifest } from '@/types/audio'
 
@@ -296,25 +297,23 @@ function scheduleRedirect() {
           </div>
           <div class="form-group">
             <label for="setup_password">Mot de passe (8 caractères minimum)</label>
-            <input
+            <PasswordInput
               id="setup_password"
               v-model="data.password"
-              type="password"
               autocomplete="new-password"
-              minlength="8"
+              :minlength="8"
               required
-            >
+            />
           </div>
           <div class="form-group">
             <label for="setup_password_confirm">Confirmer le mot de passe</label>
-            <input
+            <PasswordInput
               id="setup_password_confirm"
               v-model="passwordConfirm"
-              type="password"
               autocomplete="new-password"
-              minlength="8"
+              :minlength="8"
               required
-            >
+            />
           </div>
           <div v-if="accountError" class="msg msg-error" style="margin-top: 0.5rem">{{ accountError }}</div>
         </div>

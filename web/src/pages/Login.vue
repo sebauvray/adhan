@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import CardLayout from '@/layouts/CardLayout.vue'
+import PasswordInput from '@/components/PasswordInput.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -37,7 +38,7 @@ async function submit() {
       </div>
       <div class="form-group">
         <label for="password">Mot de passe</label>
-        <input id="password" v-model="password" type="password" autocomplete="current-password" required>
+        <PasswordInput id="password" v-model="password" autocomplete="current-password" required />
       </div>
       <div v-if="error" class="msg msg-error" style="margin-top: 0.5rem">{{ error }}</div>
       <div class="actions" style="margin-top: 1.2rem">
