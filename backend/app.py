@@ -332,10 +332,10 @@ async def api_get_config():
         "log_level": get_value('config', 'LOG_LEVEL', 'INFO'),
         "owntone_host": get_value('owntone', 'HOST', 'host.docker.internal'),
         "owntone_port": get_value('owntone', 'PORT', '3689'),
-        "adhan_file": get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3'),
+        "adhan_file": get_value('owntone', 'ADHAN_FILE', f'{MEDIA_DIR}/adhan.mp3'),
         "adhan_filename": get_value('owntone', 'ADHAN_FILENAME', ''),
         "adhan_volume": get_value('owntone', 'ADHAN_VOLUME', '40'),
-        "alert_file": get_value('owntone', 'ALERT_FILE', '/srv/media/alert.mp3'),
+        "alert_file": get_value('owntone', 'ALERT_FILE', f'{MEDIA_DIR}/alert.mp3'),
         "alert_filename": get_value('owntone', 'ALERT_FILENAME', ''),
         "quiet_start": get_value('config', 'QUIET_START', '21:00'),
         "quiet_end": get_value('config', 'QUIET_END', '07:00'),
@@ -588,6 +588,25 @@ def _sync_ma_media_library_after_upload() -> None:
     ).start()
 
 
+def _sync_owntone_library_after_upload() -> None:
+    """After an upload/delete, ask OwnTone to re-index its library so the new file
+    is searchable by path (resolve_track_uri looks it up by exact path). No-op
+    unless OwnTone is the active provider. Best-effort, async — never blocks the
+    response and never fatal."""
+    if active_provider_id() != "owntone":
+        return
+    host = get_value("owntone", "HOST", "host.docker.internal")
+    port = get_value("owntone", "PORT", "3689")
+
+    def _rescan() -> None:
+        try:
+            http_requests.put(f"http://{host}:{port}/api/update", timeout=5)
+        except Exception:
+            logger.warning("OwnTone library rescan failed", exc_info=True)
+
+    threading.Thread(target=_rescan, daemon=True).start()
+
+
 @app.post("/api/audio/reset-provider")
 async def api_audio_reset_provider(payload: StartProviderPayload):
     """Wipe the provider's data volume and re-run onboarding from scratch.
@@ -751,7 +770,11 @@ async def api_stop_playback(
     return {"success": True}
 
 
-MEDIA_DIR = '/srv/media'
+# Where uploaded audio lives. With native OwnTone the host's library dir is
+# bind-mounted at this *same absolute path* so OwnTone's `path is "..."` search
+# matches what we store in ADHAN_FILE/ALERT_FILE. Falls back to the legacy volume
+# mount point when no native dir is configured.
+MEDIA_DIR = os.environ.get('MEDIA_DIR', '/srv/media')
 ALLOWED_AUDIO = {'.mp3', '.wav', '.ogg', '.m4a', '.flac'}
 
 
@@ -815,6 +838,7 @@ async def api_upload_adhan(
     set_value('owntone', 'ADHAN_FILE', dest)
     set_value('owntone', 'ADHAN_FILENAME', file.filename)
     _sync_ma_media_library_after_upload()
+    _sync_owntone_library_after_upload()
     return {"success": True, "filename": file.filename, "path": dest}
 
 
@@ -827,8 +851,9 @@ async def api_delete_adhan(
     adhan_file = get_value('owntone', 'ADHAN_FILE', '')
     if adhan_file and os.path.exists(adhan_file):
         os.remove(adhan_file)
-    set_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3')
+    set_value('owntone', 'ADHAN_FILE', f'{MEDIA_DIR}/adhan.mp3')
     set_value('owntone', 'ADHAN_FILENAME', '')
+    _sync_owntone_library_after_upload()
     return {"success": True}
 
 
@@ -853,6 +878,7 @@ async def api_upload_alert(
     set_value('owntone', 'ALERT_FILE', dest)
     set_value('owntone', 'ALERT_FILENAME', file.filename)
     _sync_ma_media_library_after_upload()
+    _sync_owntone_library_after_upload()
     return {"success": True, "filename": file.filename, "path": dest}
 
 
@@ -865,8 +891,9 @@ async def api_delete_alert(
     alert_file = get_value('owntone', 'ALERT_FILE', '')
     if alert_file and os.path.exists(alert_file):
         os.remove(alert_file)
-    set_value('owntone', 'ALERT_FILE', '/srv/media/alert.mp3')
+    set_value('owntone', 'ALERT_FILE', f'{MEDIA_DIR}/alert.mp3')
     set_value('owntone', 'ALERT_FILENAME', '')
+    _sync_owntone_library_after_upload()
     return {"success": True}
 
 

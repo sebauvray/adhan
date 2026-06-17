@@ -128,7 +128,7 @@ def _migrate_env_to_db(conn):
         'owntone': {
             'HOST': os.environ.get('OWNTONE_HOST', 'host.docker.internal'),
             'PORT': os.environ.get('OWNTONE_PORT', '3689'),
-            'ADHAN_FILE': os.environ.get('ADHAN_FILE', '/srv/media/adhan.mp3'),
+            'ADHAN_FILE': os.environ.get('ADHAN_FILE', f"{os.environ.get('MEDIA_DIR', '/srv/media')}/adhan.mp3"),
             'ADHAN_VOLUME': os.environ.get('ADHAN_VOLUME', '40'),
         },
     }
@@ -144,13 +144,14 @@ def _migrate_env_to_db(conn):
 
 def _ensure_defaults(conn):
     """Ensure essential default values exist in the database."""
+    media_dir = os.environ.get('MEDIA_DIR', '/srv/media')
     defaults = {
         'owntone': {
             'HOST': 'host.docker.internal',
             'PORT': '3689',
-            'ADHAN_FILE': '/srv/media/adhan.mp3',
+            'ADHAN_FILE': f'{media_dir}/adhan.mp3',
             'ADHAN_VOLUME': '40',
-            'ALERT_FILE': '/srv/media/alert.mp3',
+            'ALERT_FILE': f'{media_dir}/alert.mp3',
         },
         'music_assistant': {
             'HOST': 'host.docker.internal',

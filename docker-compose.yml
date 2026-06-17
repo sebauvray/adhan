@@ -11,7 +11,10 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - adhan-data:/app/data
-      - audio-media:/srv/media
+      # Native OwnTone: bind the host library dir at its *same absolute path* so
+      # OwnTone's `path is "..."` search matches what we store. Legacy/no native:
+      # falls back to the named volume at /srv/media.
+      - ${OWNTONE_MEDIA_DIR:-audio-media}:${OWNTONE_MEDIA_DIR:-/srv/media}
       - ${ADHAN_HOST_DIR:-.}/backend/app.py:/app/app.py
       - ${ADHAN_HOST_DIR:-.}/backend/scheduler.py:/app/scheduler.py
       - ${ADHAN_HOST_DIR:-.}/backend/adhan_player.py:/app/adhan_player.py
@@ -30,6 +33,7 @@ services:
     environment:
       - TZ=${TZ:-Europe/Paris}
       - DB_PATH=/app/data/adhan.db
+      - MEDIA_DIR=${OWNTONE_MEDIA_DIR:-/srv/media}
       - COOKIE_SECURE=${COOKIE_SECURE:-false}
       - COMPOSE_DIR=/compose
       - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-adhan}

@@ -5,6 +5,7 @@ the codebase doesn't know which speaker stack is in use. Reads its host/port
 and the adhan/alert file paths from the SQLite `owntone` table.
 """
 import logging
+import os
 from typing import Optional
 
 import requests
@@ -158,7 +159,8 @@ class OwnToneProvider(AudioProvider):
             raise ValueError(f"Unknown announcement kind: {kind}")
 
         key = "ADHAN_FILE" if kind == "adhan" else "ALERT_FILE"
-        default = "/srv/media/adhan.mp3" if kind == "adhan" else "/srv/media/alert.mp3"
+        media_dir = os.environ.get("MEDIA_DIR", "/srv/media")
+        default = f"{media_dir}/adhan.mp3" if kind == "adhan" else f"{media_dir}/alert.mp3"
         file_path = get_value("owntone", key, default)
         if not file_path:
             raise AudioFileNotFound(f"No file path configured for {kind}")
