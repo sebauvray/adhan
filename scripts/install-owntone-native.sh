@@ -16,8 +16,11 @@
 # (re)load the LaunchAgent without touching the build (used by `make up`).
 set -euo pipefail
 
-SERVICE_ONLY=false
-[ "${1:-}" = "--service-only" ] && SERVICE_ONLY=true
+MODE="install"
+case "${1:-}" in
+  --service-only) MODE="service" ;;
+  --uninstall)    MODE="uninstall" ;;
+esac
 
 # --- Paths (user-local install, no sudo) ---
 PREFIX="$HOME/owntone_data/usr"
@@ -77,8 +80,26 @@ PLISTEOF
   log "Service launchd '$LABEL' chargé (démarrage auto au login, relance sur crash)."
 }
 
-if $SERVICE_ONLY; then
+# ---------------------------------------------------------------------------
+# Uninstall: stop the service and remove build/config/db. Keeps the media
+# library (it's the user's personal music) and the Homebrew deps (shared).
+# ---------------------------------------------------------------------------
+uninstall_owntone() {
+  launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+  rm -f "$PLIST"
+  pkill -f "owntone_data/usr/sbin/owntone" 2>/dev/null || true
+  rm -rf "$HOME/owntone_data" "$SRC_OWNTONE" "$SRC_INOTIFY"
+  log "OwnTone natif désinstallé (service, build, config, base)."
+  log "Conservé : bibliothèque média $MEDIA_DIR (ta musique perso) et les paquets Homebrew."
+}
+
+if [ "$MODE" = "service" ]; then
   install_service
+  exit 0
+fi
+
+if [ "$MODE" = "uninstall" ]; then
+  uninstall_owntone
   exit 0
 fi
 

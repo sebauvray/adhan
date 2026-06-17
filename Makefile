@@ -1,5 +1,5 @@
 .PHONY: help up down clean open admin admin-list admin-create admin-reset admin-delete \
-        owntone-install owntone-ensure owntone-up owntone-down
+        owntone-install owntone-ensure owntone-up owntone-down owntone-uninstall owntone-clean
 
 # Pick up CONTAINER_NAME_API (and any other override) from .env if present.
 ifneq (,$(wildcard .env))
@@ -35,8 +35,14 @@ help:
 	@echo "Lifecycle :"
 	@echo "  up              Démarrer le projet (build + lancement)"
 	@echo "  down            Arrêter le projet"
-	@echo "  clean           Tout supprimer (volumes, images, base de données)"
+	@echo "  clean           Tout supprimer (Docker + OwnTone natif si activé)"
 	@echo "  open            Ouvrir le dashboard dans le navigateur par défaut"
+	@echo ""
+	@echo "OwnTone natif (macOS, OWNTONE_NATIVE=true) :"
+	@echo "  owntone-install   Installer (deps + build + service launchd)"
+	@echo "  owntone-up        (Re)démarrer le service"
+	@echo "  owntone-down      Arrêter le service"
+	@echo "  owntone-uninstall Désinstaller (garde ta musique)"
 	@echo ""
 	@echo "Compte admin (api container doit être up) :"
 	@echo "  admin           Menu interactif (list/create/reset/delete)"
@@ -90,12 +96,23 @@ owntone-down:
 		&& echo "→ OwnTone natif arrêté" \
 		|| echo "Service déjà arrêté"
 
+## Désinstaller OwnTone natif (service + build + config + base ; garde la musique)
+owntone-uninstall:
+	bash scripts/install-owntone-native.sh --uninstall
+
+## Désinstallation native conditionnelle, appelée par `clean`.
+owntone-clean:
+	@if [ "$(OWNTONE_NATIVE)" = "true" ]; then \
+		echo "→ Désinstallation d'OwnTone natif…"; \
+		bash scripts/install-owntone-native.sh --uninstall; \
+	fi
+
 ## Arrêter le projet (englobe tous les profiles audio)
 down:
 	docker compose --profile music-assistant --profile owntone down
 
-## Supprimer totalement le projet (volumes, images, données)
-clean:
+## Supprimer totalement le projet (Docker + OwnTone natif si activé)
+clean: owntone-clean
 	docker compose --profile music-assistant --profile owntone down -v --rmi all
 
 ## Ouvrir le dashboard dans le navigateur par défaut
