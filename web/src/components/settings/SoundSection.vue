@@ -4,28 +4,26 @@ import { api } from '@/api/client'
 import { saveConfigField } from '@/api/config'
 
 const enabled = ref(false)
-const adhanFile = ref('')
-const alertFile = ref('')
+const adhanFilename = ref('')
+const alertFilename = ref('')
 const adhanStatus = ref('')
 const alertStatus = ref('')
 
 const adhanInput = ref<HTMLInputElement | null>(null)
 const alertInput = ref<HTMLInputElement | null>(null)
 
-const adhanCustom = computed(() => adhanFile.value && adhanFile.value !== '/srv/media/adhan.mp3')
-const alertCustom = computed(() => alertFile.value && alertFile.value !== '/srv/media/alert.mp3')
-const adhanFilename = computed(() => adhanFile.value.split('/').pop() || '')
-const alertFilename = computed(() => alertFile.value.split('/').pop() || '')
+const adhanCustom = computed(() => !!adhanFilename.value)
+const alertCustom = computed(() => !!alertFilename.value)
 
 onMounted(async () => {
   const data = await api<{
     sound_enabled: string
-    adhan_file: string
-    alert_file: string
+    adhan_filename: string
+    alert_filename: string
   }>('/config')
   enabled.value = data.sound_enabled === 'true'
-  adhanFile.value = data.adhan_file || ''
-  alertFile.value = data.alert_file || ''
+  adhanFilename.value = data.adhan_filename || ''
+  alertFilename.value = data.alert_filename || ''
 })
 
 async function toggleEnabled() {
@@ -36,43 +34,49 @@ async function uploadFile(endpoint: '/upload-adhan' | '/upload-alert', file: Fil
   const fd = new FormData()
   fd.append('file', file)
   const res = await api<{ filename: string; path: string }>(endpoint, { method: 'POST', body: fd })
-  return res.path
+  return res.filename
 }
 
 async function onAdhanChange(e: Event) {
-  const f = (e.target as HTMLInputElement).files?.[0]
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
   if (!f) return
   adhanStatus.value = 'Envoi en cours...'
   try {
-    adhanFile.value = await uploadFile('/upload-adhan', f)
+    adhanFilename.value = await uploadFile('/upload-adhan', f)
     adhanStatus.value = ''
   } catch (err) {
     adhanStatus.value = (err as Error).message || 'Erreur'
+  } finally {
+    input.value = ''
   }
 }
 
 async function removeAdhan() {
   if (!confirm('Supprimer le fichier audio personnalisé ?')) return
   await api('/upload-adhan', { method: 'DELETE' })
-  adhanFile.value = '/srv/media/adhan.mp3'
+  adhanFilename.value = ''
 }
 
 async function onAlertChange(e: Event) {
-  const f = (e.target as HTMLInputElement).files?.[0]
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
   if (!f) return
   alertStatus.value = 'Envoi en cours...'
   try {
-    alertFile.value = await uploadFile('/upload-alert', f)
+    alertFilename.value = await uploadFile('/upload-alert', f)
     alertStatus.value = ''
   } catch (err) {
     alertStatus.value = (err as Error).message || 'Erreur'
+  } finally {
+    input.value = ''
   }
 }
 
 async function removeAlert() {
   if (!confirm("Supprimer le son d'alerte personnalisé ?")) return
   await api('/upload-alert', { method: 'DELETE' })
-  alertFile.value = '/srv/media/alert.mp3'
+  alertFilename.value = ''
 }
 </script>
 

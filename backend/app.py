@@ -333,8 +333,10 @@ async def api_get_config():
         "owntone_host": get_value('owntone', 'HOST', 'host.docker.internal'),
         "owntone_port": get_value('owntone', 'PORT', '3689'),
         "adhan_file": get_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3'),
+        "adhan_filename": get_value('owntone', 'ADHAN_FILENAME', ''),
         "adhan_volume": get_value('owntone', 'ADHAN_VOLUME', '40'),
         "alert_file": get_value('owntone', 'ALERT_FILE', '/srv/media/alert.mp3'),
+        "alert_filename": get_value('owntone', 'ALERT_FILENAME', ''),
         "quiet_start": get_value('config', 'QUIET_START', '21:00'),
         "quiet_end": get_value('config', 'QUIET_END', '07:00'),
         "quiet_volume": get_value('config', 'QUIET_VOLUME', '10'),
@@ -811,6 +813,7 @@ async def api_upload_adhan(
         f.write(content)
 
     set_value('owntone', 'ADHAN_FILE', dest)
+    set_value('owntone', 'ADHAN_FILENAME', file.filename)
     _sync_ma_media_library_after_upload()
     return {"success": True, "filename": file.filename, "path": dest}
 
@@ -825,6 +828,7 @@ async def api_delete_adhan(
     if adhan_file and os.path.exists(adhan_file):
         os.remove(adhan_file)
     set_value('owntone', 'ADHAN_FILE', '/srv/media/adhan.mp3')
+    set_value('owntone', 'ADHAN_FILENAME', '')
     return {"success": True}
 
 
@@ -847,6 +851,7 @@ async def api_upload_alert(
         f.write(content)
 
     set_value('owntone', 'ALERT_FILE', dest)
+    set_value('owntone', 'ALERT_FILENAME', file.filename)
     _sync_ma_media_library_after_upload()
     return {"success": True, "filename": file.filename, "path": dest}
 
@@ -861,6 +866,7 @@ async def api_delete_alert(
     if alert_file and os.path.exists(alert_file):
         os.remove(alert_file)
     set_value('owntone', 'ALERT_FILE', '/srv/media/alert.mp3')
+    set_value('owntone', 'ALERT_FILENAME', '')
     return {"success": True}
 
 
